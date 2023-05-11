@@ -8,7 +8,7 @@ namespace Oxide.Plugins
 {
     [Info("Buoyancy", "Tacman", "1.4.0")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
-    class AddBuoyancy : RustPlugin
+    class MoreBuoyancy : RustPlugin
     {
         #region Config
         public PluginConfig _config;
