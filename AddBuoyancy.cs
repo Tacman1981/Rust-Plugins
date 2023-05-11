@@ -38,10 +38,10 @@ namespace Oxide.Plugins
         void OnEntitySpawned(BaseEntity entity)
         {
             if (entity == null ||
-    (entity.ShortPrefabName != "heli_crate" &&
-     entity.ShortPrefabName != "codelockedhackablecrate" &&
-     entity.ShortPrefabName != "supply_drop" &&
-     !entity.ShortPrefabName.Contains("minicopter") &&
+    (entity.ShortPrefabName != "heli_crate" ||
+     entity.ShortPrefabName != "codelockedhackablecrate" ||
+     entity.ShortPrefabName != "supply_drop" ||
+     !entity.ShortPrefabName.Contains("minicopter") ||
      !entity.ShortPrefabName.Contains("scraptransporthelicopter")))
             {
                 return;
