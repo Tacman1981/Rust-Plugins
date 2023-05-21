@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+//helicopters not floating, must fix at some point
+using UnityEngine;
 using Rust;
 using System;
 using System.ComponentModel;
