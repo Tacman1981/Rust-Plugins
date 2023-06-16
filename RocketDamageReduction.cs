@@ -1,4 +1,6 @@
-﻿using System;
+//Untested, can not confirm if it reduces all rocket damage yet
+
+using System;
 using Newtonsoft.Json;
 using Oxide.Core;
 using Oxide.Core.Configuration;
