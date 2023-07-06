@@ -4,7 +4,7 @@ using System;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "1.4.0")]
+    [Info("Buoyant Crates", "Tacman", "1.5.0")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
@@ -63,11 +63,16 @@ namespace Oxide.Plugins
                     Destroy(this);
                     return;
                 }
-                if (!_hasLanded && UnityEngine.Time.frameCount % detectionRate == 0 && WaterLevel.Factor(_entity.WorldSpaceBounds().ToBounds()) > 0.65f)
+                if (!_hasLanded && UnityEngine.Time.frameCount % detectionRate == 0)
                 {
-                    BuoyancyComponent();
-                    _hasLanded = true;
-                    Invoke("RemoveParachute", 0.5f);
+                    Bounds bounds = _entity.WorldSpaceBounds().ToBounds();
+
+                    if (WaterLevel.Factor(bounds, waves: true, volumes: true, forEntity: _entity) > 0.65f)
+                    {
+                        BuoyancyComponent();
+                        _hasLanded = true;
+                        Invoke("RemoveParachute", 0.5f);
+                    }
                 }
             }
 
