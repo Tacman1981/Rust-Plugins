@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Player Count", "Tacman", "1.0.0")]
+    [Info("Player Count", "Tacman", "1.2.0")]
     public class PlayerCount : CovalencePlugin
     {
         private Dictionary<string, float> playerLastCommandTimes = new Dictionary<string, float>();
@@ -26,7 +26,7 @@ namespace Oxide.Plugins
         {
             return new PluginConfig
             {
-                DelaySeconds = 10 // Default delay of 10 seconds
+                DelaySeconds = 60 // Default delay of 10 seconds
             };
         }
 
@@ -46,61 +46,76 @@ namespace Oxide.Plugins
         {
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] Online Players: {0}" },
+                { "PlayerCountFormat", "Online Players: {0}" },
+                { "AdminCountFormat", "Online Admins: {0}" }
             }, this);
 
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] Joueurs en ligne : {0}" },
+                { "PlayerCountFormat", "Joueurs en ligne : {0}" },
+                { "AdminCountFormat", "Administrateurs en ligne : {0}" }
             }, this, "fr");
 
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] Online-Spieler: {0}" },
+                { "PlayerCountFormat", "Online-Spieler: {0}" },
+                { "AdminCountFormat", "Online-Administratoren: {0}" }
             }, this, "de");
 
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] Jugadores en línea: {0}" },
+                { "PlayerCountFormat", "Jugadores en línea: {0}" },
+                { "AdminCountFormat", "Administradores en línea: {0}" }
             }, this, "es");
 
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] Giocatori online: {0}" },
+                { "PlayerCountFormat", "Giocatori online: {0}" },
+                { "AdminCountFormat", "Amministratori online: {0}" }
             }, this, "it");
 
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] Онлайн игроки: {0}" },
+                { "PlayerCountFormat", "Онлайн игроки: {0}" },
+                { "AdminCountFormat", "Онлайн администраторы: {0}" }
             }, this, "ru");
 
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] 在线玩家数：{0}" },
+                { "PlayerCountFormat", "在线玩家数：{0}" },
+                { "AdminCountFormat", "在线管理员数：{0}" }
             }, this, "zh-CN");
 
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                { "PlayerCountFormat", "[Player Count] اللاعبين المتصلين: {0}" },
+                { "PlayerCountFormat", "اللاعبين المتصلين: {0}" },
+                { "AdminCountFormat", "المسؤولين المتصلين: {0}" }
             }, this, "ar");
+
+            // Add Dutch language support
+            lang.RegisterMessages(new Dictionary<string, string>
+            {
+                { "PlayerCountFormat", "Aantal spelers online: {0}" },
+                { "AdminCountFormat", "Aantal admins online: {0}" }
+            }, this, "nl");
         }
 
         private string GetMessage(string key, string userId = null) => lang.GetMessage(key, this, userId);
 
         private bool CanExecuteCommand(IPlayer player)
         {
+            float currentTime = Time.realtimeSinceStartup;
             float lastCommandTime;
+
             if (playerLastCommandTimes.TryGetValue(player.Id, out lastCommandTime))
             {
-                float currentTime = Time.realtimeSinceStartup;
-                int commandDelay = config.DelaySeconds;
+                float commandDelay = config.DelaySeconds;
 
                 if (currentTime - lastCommandTime < commandDelay)
-                player.Reply("You can not use this command more than once every 60 seconds");
                     return false;
             }
 
-            playerLastCommandTimes[player.Id] = Time.realtimeSinceStartup;
+            playerLastCommandTimes[player.Id] = currentTime;
             return true;
         }
 
@@ -110,16 +125,25 @@ namespace Oxide.Plugins
             if (!CanExecuteCommand(player))
                 return;
 
-            int playerCount = BasePlayer.activePlayerList.Count;
+            int adminCount = 0;
+            int playerCount = 0;
 
-            string playerCountText = string.Format(GetMessage("PlayerCountFormat"), playerCount);
+            foreach (var basePlayer in BasePlayer.activePlayerList)
+            {
+                if (basePlayer.IsAdmin)
+                    adminCount++;
+                else
+                    playerCount++;
+            }
 
-            player.Message(playerCountText);
+            string playerCountText = string.Format(GetMessage("PlayerCountFormat", player.Id), playerCount);
+            string adminCountText = string.Format(GetMessage("AdminCountFormat", player.Id), adminCount);
+
+            string response = $"[Player Count] {playerCountText} - {adminCountText}";
 
             foreach (var onlinePlayer in players.Connected)
             {
-                if (onlinePlayer.Id != player.Id)
-                    onlinePlayer.Message(playerCountText);
+                player.Reply(response, null, player.Id);
             }
         }
     }
