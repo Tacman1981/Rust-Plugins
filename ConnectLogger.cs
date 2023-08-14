@@ -15,25 +15,43 @@ namespace Oxide.Plugins
             logFilePath = Path.Combine(Interface.Oxide.LogDirectory, "ConnectLogs.txt");
         }
 
+        private void OnNewSave()
+        {
+            ClearLogFile(); // Clear the log file on a new server save
+        }
+
         private void OnPlayerConnected(BasePlayer player)
         {
             // Log player connection with timestamp
             string logMessage = $"[{DateTime.Now}] [CONNECT] {player.displayName} ({player.UserIDString}) connected.";
-            LogToFile(logFilePath, logMessage);
+            PrependLogToFile(logFilePath, logMessage); // Use PrependLogToFile instead of LogToFile
         }
 
         private void OnPlayerDisconnected(BasePlayer player, string reason)
         {
             // Log player disconnection with timestamp
             string logMessage = $"[{DateTime.Now}] [DISCONNECT] {player.displayName} ({player.UserIDString}) disconnected. Reason: {reason}";
-            LogToFile(logFilePath, logMessage);
+            PrependLogToFile(logFilePath, logMessage); // Use PrependLogToFile instead of LogToFile
         }
 
-        private void LogToFile(string filePath, string message)
+        private void PrependLogToFile(string filePath, string message)
         {
-            using (StreamWriter streamWriter = new StreamWriter(filePath, true))
+            // Read the existing content of the file
+            string existingContent = File.ReadAllText(filePath);
+
+            // Combine the new message with the existing content
+            string newContent = message + Environment.NewLine + existingContent;
+
+            // Write the combined content back to the file
+            File.WriteAllText(filePath, newContent);
+        }
+
+        private void ClearLogFile()
+        {
+            // Delete the log file if it exists
+            if (File.Exists(logFilePath))
             {
-                streamWriter.WriteLine(message);
+                File.Delete(logFilePath);
             }
         }
     }
