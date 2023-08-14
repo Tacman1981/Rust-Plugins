@@ -17,7 +17,7 @@ namespace Oxide.Plugins
 
         private void OnNewSave()
         {
-            ClearLogFile(); // Clear the log file on a new server save
+            ClearLogFile(); // Clear the log file on a new map
         }
 
         private void OnPlayerConnected(BasePlayer player)
