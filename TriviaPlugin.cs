@@ -18,6 +18,7 @@ namespace Oxide.Plugins
         private List<TriviaQuestion> triviaQuestions = new List<TriviaQuestion>();
         private Dictionary<string, int> rewardItems = new Dictionary<string, int>();
         private TriviaQuestion currentTriviaQuestion;
+        private DateTime lastCorrectAnswerTime = DateTime.MinValue;
 
         private class TriviaQuestion
         {
@@ -202,21 +203,22 @@ new TriviaQuestion
         }
 
         private Timer triviaQuestionTimer; // Declare a timer variable
+        private bool questionBroadcasted = false; // Add a flag to track if the question has been broadcasted
 
-private void AskTriviaQuestion()
+        private void AskTriviaQuestion()
 {
-    if (triviaQuestions.Count == 0)
-        return; // No more questions to ask
+    if (triviaQuestions.Count == 0 || questionBroadcasted)
+        return; // No more questions to ask or question already broadcasted
 
     // Select a random question
     var random = new System.Random();
     currentTriviaQuestion = triviaQuestions[random.Next(triviaQuestions.Count)];
 
-    // Loop through all online players and send the question to each of them
-    foreach (var player in BasePlayer.activePlayerList)
-    {
-        player.ChatMessage($"Question: {currentTriviaQuestion.Question}");
-    }
+    // Broadcast the question to all online players
+    Server.Broadcast($"Question: {currentTriviaQuestion.Question}");
+
+    // Set the flag to true to indicate that the question has been broadcasted
+    questionBroadcasted = true;
 
     // Cancel any previously set timers for DisplayAnswer
     if (triviaQuestionTimer != null)
@@ -231,38 +233,29 @@ private void AskTriviaQuestion()
     });
 }
 
+
         private void DisplayAnswer()
 {
-    bool answeredCorrectly = false;
-
-    // Check answers of all players
-    foreach (var player in BasePlayer.activePlayerList)
+    if (!correctAnswerDisplayed)
     {
-        if (playerScores.ContainsKey(player.UserIDString) && playerScores[player.UserIDString] == currentTriviaQuestion.Reward)
-        {
-            answeredCorrectly = true;
-            break; // At least one player answered correctly, no need to check further
-        }
-    }
+        float currentTime = UnityEngine.Time.realtimeSinceStartup; // Get the current time using UnityEngine.Time
+        DateTime currentDateTime = DateTime.Now; // Get the current date and time
 
-    // If no one answered correctly, broadcast the correct answer to all players
-    if (!answeredCorrectly)
-    {
-        Server.Broadcast($"Correct Answer: {currentTriviaQuestion.Answer}");
-    }
-}
-
-        private void GiveReward(BasePlayer player, int rewardAmount)
+        foreach (var player in BasePlayer.activePlayerList)
         {
-            foreach (var rewardItem in rewardItems)
+            if (player != null)
             {
-                string itemShortname = rewardItem.Key;
-                int amount = rewardItem.Value + rewardAmount; // Multiply the reward amount by the configured amount
-
-                // Use Rust's item system to give items to the player
-                GiveItemToPlayer(player, itemShortname, amount);
+                player.ChatMessage($"Correct Answer: {currentTriviaQuestion.Answer}");
             }
         }
+
+        correctAnswerDisplayed = true; // Set the flag to indicate the correct answer has been displayed
+        lastCorrectAnswerTime = currentDateTime; // Record the time of the correct answer as a DateTime
+
+        // Call the GiveReward method here if it was missing in your code
+        // GiveReward(player.Object as BasePlayer, currentTriviaQuestion.Reward);
+    }
+}
 
         private void GiveItemToPlayer(BasePlayer player, string itemShortname, int amount)
         {
@@ -300,17 +293,43 @@ private void AskTriviaQuestion()
             }
         }
 
-        private void OnUserChat(IPlayer player, string message)
+        private bool correctAnswerDisplayed = false; // Add a flag to track if the correct answer has been displayed
+
+private void OnUserChat(IPlayer player, string message)
 {
     if (currentTriviaQuestion != null)
     {
         if (message.Equals(currentTriviaQuestion.Answer, StringComparison.OrdinalIgnoreCase))
         {
-            // The player answered correctly
-            player.Message($"Correct Answer: {currentTriviaQuestion.Answer}");
-            GiveReward(player.Object as BasePlayer, currentTriviaQuestion.Reward);
+            DateTime currentTime = DateTime.Now; // Get the current time
+
+            if (!correctAnswerDisplayed || (currentTime - lastCorrectAnswerTime).TotalSeconds > 10.0)
+            {
+                player.Message($"Correct Answer: {currentTriviaQuestion.Answer}");
+                GiveReward(player.Object as BasePlayer, currentTriviaQuestion.Reward);
+                correctAnswerDisplayed = true; // Set the flag to indicate the correct answer has been displayed
+                lastCorrectAnswerTime = currentTime; // Record the time of the correct answer
+            }
+            else
+            {
+                // The player repeated the correct answer within 10 seconds
+                player.Message("The question was already answered.");
+            }
         }
     }
 }
+
+private void GiveReward(BasePlayer player, int rewardAmount)
+{
+    foreach (var rewardItem in rewardItems)
+    {
+        string itemShortname = rewardItem.Key;
+        int amount = rewardItem.Value + rewardAmount; // Multiply the reward amount by the configured amount
+
+        // Use Rust's item system to give items to the player
+        GiveItemToPlayer(player, itemShortname, amount);
     }
+}
+
+}
 }
