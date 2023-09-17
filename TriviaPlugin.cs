@@ -212,10 +212,10 @@ private void AskTriviaQuestion()
     var random = new System.Random();
     currentTriviaQuestion = triviaQuestions[random.Next(triviaQuestions.Count)];
 
-    // Send the question to all players
+    // Loop through all online players and send the question to each of them
     foreach (var player in BasePlayer.activePlayerList)
     {
-        Server.Broadcast($"Question: {currentTriviaQuestion.Question}");
+        player.ChatMessage($"Question: {currentTriviaQuestion.Question}");
     }
 
     // Cancel any previously set timers for DisplayAnswer
@@ -227,10 +227,8 @@ private void AskTriviaQuestion()
     // Schedule a new timer to call DisplayAnswer after 30 seconds
     triviaQuestionTimer = timer.Once(30, () =>
     {
-        //Puts("Timer expired, answer shown in chat?");
         DisplayAnswer(); // Call DisplayAnswer after 30 seconds
     });
-
 }
 
         private void DisplayAnswer()
@@ -247,20 +245,10 @@ private void AskTriviaQuestion()
         }
     }
 
-    // Broadcast the correct answer to all players
-    Server.Broadcast($"Correct Answer: {currentTriviaQuestion.Answer}");
-
-    // Call the GiveReward function to give rewards to the player if anyone answered correctly
-    if (answeredCorrectly)
+    // If no one answered correctly, broadcast the correct answer to all players
+    if (!answeredCorrectly)
     {
-        foreach (var player in BasePlayer.activePlayerList)
-        {
-            GiveReward(player, currentTriviaQuestion.Reward);
-        }
-    }
-    else
-    {
-        // Handle cases where no one answered correctly
+        Server.Broadcast($"Correct Answer: {currentTriviaQuestion.Answer}");
     }
 }
 
@@ -313,17 +301,16 @@ private void AskTriviaQuestion()
         }
 
         private void OnUserChat(IPlayer player, string message)
+{
+    if (currentTriviaQuestion != null)
+    {
+        if (message.Equals(currentTriviaQuestion.Answer, StringComparison.OrdinalIgnoreCase))
         {
-            if (currentTriviaQuestion != null)
-            {
-                if (message.Equals(currentTriviaQuestion.Answer, StringComparison.OrdinalIgnoreCase))
-                {
-                    // The player answered correctly
-                    player.Message($"Correct Answer: {currentTriviaQuestion.Answer}");
-                    GiveReward(player.Object as BasePlayer, currentTriviaQuestion.Reward);
-                }
-            }
+            // The player answered correctly
+            player.Message($"Correct Answer: {currentTriviaQuestion.Answer}");
+            GiveReward(player.Object as BasePlayer, currentTriviaQuestion.Reward);
         }
-
+    }
+}
     }
 }
