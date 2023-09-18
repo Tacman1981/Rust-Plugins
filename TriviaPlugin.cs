@@ -4,9 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Xml;
 
 namespace Oxide.Plugins
 {
@@ -14,26 +11,30 @@ namespace Oxide.Plugins
     [Description("A trivia plugin for your Rust server.")]
     public class TriviaPlugin : RustPlugin
     {
-        private Dictionary<string, int> playerScores = new Dictionary<string, int>();
         private List<TriviaQuestion> triviaQuestions = new List<TriviaQuestion>();
-        private Dictionary<string, int> rewardItems = new Dictionary<string, int>();
-        private TriviaQuestion currentTriviaQuestion;
+        private TriviaQuestion activeTriviaQuestion;
         private DateTime lastCorrectAnswerTime = DateTime.MinValue;
         private bool correctAnswerGiven = false;
+        private Timer answerDisplayTimer;
+        private Dictionary<string, int> rewardItems = new Dictionary<string, int>();
+        private Timer triviaQuestionTimer;
+        private bool isQuestionActive = false;
+
 
         private class TriviaQuestion
-        {
-            public string Question { get; set; }
-            public string Answer { get; set; }
-            public int Reward { get; set; }
-        }
+{
+    public string Question { get; set; }
+    public string Answer { get; set; }
+    public int Reward { get; set; }
+    public bool Answered { get; set; } // Add this line
+}
+
 
         private void Init()
         {
             LoadConfig();
             LoadTriviaQuestions();
             AskTriviaQuestion();
-            timer.Every(600, AskTriviaQuestion);
         }
 
         private void LoadConfig()
@@ -51,56 +52,71 @@ namespace Oxide.Plugins
             };
             SaveConfig();
         }
+        
+        private void CreateDefaultTriviaQuestions(string filePath)
+{
+    var defaultQuestions = new List<TriviaQuestion>
+    {
+        // Add your default trivia questions here
+    };
+
+    var json = JsonConvert.SerializeObject(defaultQuestions, Newtonsoft.Json.Formatting.Indented);
+    File.WriteAllText(filePath, json);
+    Puts("Default trivia questions file created.");
+}
+
 
         private void LoadTriviaQuestions()
+{
+    var questionsPath = Path.Combine(Interface.Oxide.DataDirectory, "trivia_questions.json");
+
+    if (!File.Exists(questionsPath))
+    {
+        CreateDefaultTriviaQuestions(questionsPath);
+    }
+
+    try
+    {
+        var json = File.ReadAllText(questionsPath);
+        triviaQuestions = JsonConvert.DeserializeObject<List<TriviaQuestion>>(json);
+
+        // Initialize the Answered flag for all questions
+        foreach (var question in triviaQuestions)
         {
-            var questionsPath = Path.Combine(Interface.Oxide.DataDirectory, "trivia_questions.json");
-
-            if (!File.Exists(questionsPath))
-            {
-                CreateDefaultTriviaQuestions(questionsPath);
-            }
-
-            try
-            {
-                var json = File.ReadAllText(questionsPath);
-                triviaQuestions = JsonConvert.DeserializeObject<List<TriviaQuestion>>(json);
-            }
-            catch (Exception ex)
-            {
-                Puts($"Error loading trivia questions: {ex.Message}");
-            }
+            question.Answered = false;
         }
-
-        private void CreateDefaultTriviaQuestions(string filePath)
-        {
-            var defaultQuestions = new List<TriviaQuestion>
-            {
-                // Add your default trivia questions here
-            };
-
-            var json = JsonConvert.SerializeObject(defaultQuestions, Newtonsoft.Json.Formatting.Indented);
-            File.WriteAllText(filePath, json);
-            Puts("Default trivia questions file created.");
-        }
-
-        private Timer triviaQuestionTimer;
-        private bool questionBroadcasted = false;
+    }
+    catch (Exception ex)
+    {
+        Puts($"Error loading trivia questions: {ex.Message}");
+    }
+}
 
         private void AskTriviaQuestion()
         {
-            if (triviaQuestions.Count == 0 || questionBroadcasted)
+            if (triviaQuestions.Count == 0 || correctAnswerGiven)
             {
-                questionBroadcasted = false;
+                // No more questions to ask or the previous question has been answered
+                correctAnswerGiven = false;
+
+                // Schedule the next question after a correct answer has been given
+                if (triviaQuestionTimer != null)
+                {
+                    triviaQuestionTimer.Destroy();
+                }
+
+                triviaQuestionTimer = timer.Once(600, () =>
+                {
+                    AskTriviaQuestion();
+                });
+
                 return;
             }
 
             var random = new System.Random();
-            currentTriviaQuestion = triviaQuestions[random.Next(triviaQuestions.Count)];
+            activeTriviaQuestion = triviaQuestions[random.Next(triviaQuestions.Count)];
 
-            Server.Broadcast($"Question: {currentTriviaQuestion.Question}");
-
-            questionBroadcasted = true;
+            Server.Broadcast($"Question: {activeTriviaQuestion.Question}");
 
             if (triviaQuestionTimer != null)
             {
@@ -115,18 +131,64 @@ namespace Oxide.Plugins
 
         private void DisplayAnswer()
         {
-            if (!correctAnswerGiven)
+            foreach (var player in BasePlayer.activePlayerList)
             {
-                foreach (var player in BasePlayer.activePlayerList)
+                if (player != null)
                 {
-                    if (player != null)
-                    {
-                        player.ChatMessage($"Correct Answer: {currentTriviaQuestion.Answer}");
-                    }
+                    player.ChatMessage($"Correct Answer: {activeTriviaQuestion.Answer}");
                 }
+            }
 
-                correctAnswerGiven = true;
-                lastCorrectAnswerTime = DateTime.Now;
+            triviaQuestions.Remove(activeTriviaQuestion);
+
+            if (triviaQuestions.Count > 0)
+            {
+                AskTriviaQuestion();
+            }
+            else
+            {
+                LoadTriviaQuestions();
+            }
+        }
+
+        private void OnUserChat(IPlayer player, string message)
+{
+    if (activeTriviaQuestion != null && !activeTriviaQuestion.Answered) // Check if a question is active and not answered
+    {
+        if (message.Equals(activeTriviaQuestion.Answer, StringComparison.OrdinalIgnoreCase))
+        {
+            Server.Broadcast($"Correct Answer: {activeTriviaQuestion.Answer}");
+            GiveReward(player.Object as BasePlayer, activeTriviaQuestion.Reward);
+            lastCorrectAnswerTime = DateTime.Now;
+
+            // Set the correctAnswerGiven flag to true
+            correctAnswerGiven = true;
+
+            // Mark the question as answered
+            activeTriviaQuestion.Answered = true;
+
+            // Ask the next question or reset the list
+            if (triviaQuestions.Count > 0)
+            {
+                AskTriviaQuestion();
+            }
+            else
+            {
+                // No more questions, reset the list or load new questions here
+                LoadTriviaQuestions();
+            }
+        }
+    }
+}
+
+        private void GiveReward(BasePlayer player, int rewardAmount)
+        {
+            foreach (var rewardItem in rewardItems)
+            {
+                string itemShortname = rewardItem.Key;
+                int amount = rewardItem.Value + rewardAmount;
+
+                GiveItemToPlayer(player, itemShortname, amount);
             }
         }
 
@@ -151,40 +213,6 @@ namespace Oxide.Plugins
                         SendReply(player, $"Inventory full. {amount}x {itemShortname} dropped on the ground.");
                     }
                 }
-            }
-        }
-
-        private void OnUserChat(IPlayer player, string message)
-        {
-            if (currentTriviaQuestion != null)
-            {
-                if (message.Equals(currentTriviaQuestion.Answer, StringComparison.OrdinalIgnoreCase))
-                {
-                    DateTime currentTime = DateTime.Now;
-
-                    if (!correctAnswerGiven || (currentTime - lastCorrectAnswerTime).TotalSeconds > 10.0)
-                    {
-                        player.Message($"Correct Answer: {currentTriviaQuestion.Answer}");
-                        GiveReward(player.Object as BasePlayer, currentTriviaQuestion.Reward);
-                        correctAnswerGiven = true;
-                        lastCorrectAnswerTime = currentTime;
-                    }
-                    else
-                    {
-                        player.Message("The question was already answered.");
-                    }
-                }
-            }
-        }
-
-        private void GiveReward(BasePlayer player, int rewardAmount)
-        {
-            foreach (var rewardItem in rewardItems)
-            {
-                string itemShortname = rewardItem.Key;
-                int amount = rewardItem.Value + rewardAmount;
-
-                GiveItemToPlayer(player, itemShortname, amount);
             }
         }
     }
