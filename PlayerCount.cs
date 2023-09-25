@@ -42,17 +42,6 @@ namespace Oxide.Plugins
       Config.WriteObject(config, true);
     }
 
-    protected override void LoadDefaultMessages()
-    {
-      lang.RegisterMessages(new Dictionary<string, string>
-      {
-        { "PlayerCountFormat", "Online Players: {0}" },
-        { "AdminCountFormat", "Online Admins: {0}" }
-      }, this);
-    }
-
-    private string GetMessage(string key, string userId = null) => lang.GetMessage(key, this, userId);
-
     private bool CanExecuteCommand(IPlayer player)
     {
       float currentTime = Time.realtimeSinceStartup;
@@ -94,7 +83,7 @@ namespace Oxide.Plugins
 
       foreach (var onlinePlayer in players.Connected)
       {
-        player.Reply(response, null, player.Id);
+        server.Broadcast(response, null, player.Id);
       }
     }
   }
