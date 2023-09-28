@@ -6,85 +6,108 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-  [Info("Player Count", "Tacman", "1.2.0")]
-  public class PlayerCount : CovalencePlugin
-  {
-    private Dictionary<string, float> playerLastCommandTimes = new Dictionary<string, float>();
-    private PluginConfig config;
+  [Info("Player Count", "Tacman", "1.2.0")]
+  public class PlayerCount : CovalencePlugin
+  {
+    private Dictionary<string, float> playerLastCommandTimes = new Dictionary<string, float>();
 
-    private class PluginConfig
-    {
-      public int DelaySeconds { get; set; }
-    }
+    private class PluginConfig
+    {
+      public int DelaySeconds { get; set; }
+    }
 
-    protected override void LoadDefaultConfig()
-    {
-      Config.WriteObject(GetDefaultConfig(), true);
-    }
+    private const string AdminCountPermission = "playercount.admin"; // New permission constant
 
-    private PluginConfig GetDefaultConfig()
-    {
-      return new PluginConfig
-      {
-        DelaySeconds = 60 // Default delay of 10 seconds
-      };
-    }
+    private PluginConfig config;
 
-    protected override void LoadConfig()
-    {
-      base.LoadConfig();
-      config = Config.ReadObject<PluginConfig>() ?? GetDefaultConfig();
-      SaveConfig();
-    }
+    protected void Init()
+    {
+      permission.RegisterPermission(AdminCountPermission, this);
+    }
 
-    protected override void SaveConfig()
-    {
-      Config.WriteObject(config, true);
-    }
+    protected override void LoadDefaultConfig()
+    {
+      Config.WriteObject(GetDefaultConfig(), true);
+    }
 
-    private bool CanExecuteCommand(IPlayer player)
-    {
-      float currentTime = Time.realtimeSinceStartup;
-      float lastCommandTime;
+    private PluginConfig GetDefaultConfig()
+    {
+      return new PluginConfig
+      {
+        DelaySeconds = 60 // Default delay of 10 seconds
+      };
+    }
 
-      if (playerLastCommandTimes.TryGetValue(player.Id, out lastCommandTime))
-      {
-        float commandDelay = config.DelaySeconds;
+    protected override void LoadConfig()
+    {
+      base.LoadConfig();
+      config = Config.ReadObject<PluginConfig>() ?? GetDefaultConfig();
+      SaveConfig();
+    }
 
-        if (currentTime - lastCommandTime < commandDelay)
-          return false;
-      }
+    protected override void SaveConfig()
+    {
+      Config.WriteObject(config, true);
+    }
 
-      playerLastCommandTimes[player.Id] = currentTime;
-      return true;
-    }
+    protected override void LoadDefaultMessages()
+    {
+      lang.RegisterMessages(new Dictionary<string, string>
+      {
+        { "PlayerCountFormat", "Online Players: {0}" },
+        { "AdminCountFormat", "Online Admins: {0}" }
+      }, this, "en");
 
-    [Command("pop")]
-    private void PopCommand(IPlayer player, string command, string[] args)
-    {
-      if (!CanExecuteCommand(player))
-        return;
+      // Add Dutch language support
+      lang.RegisterMessages(new Dictionary<string, string>
+      {
+        { "PlayerCountFormat", "Aantal spelers online: {0}" },
+        { "AdminCountFormat", "Aantal admins online: {0}" }
+      }, this, "nl");
+    }
 
-      int adminCount = 0;
-      int playerCount = 0;
+    private string GetMessage(string key, string userId = null) => lang.GetMessage(key, this, userId);
 
-      foreach (var basePlayer in BasePlayer.activePlayerList)
-      {
-        if (basePlayer.IsAdmin)
-          adminCount++;
-        else
-          playerCount++;
-      }
+    private bool CanExecuteCommand(IPlayer player)
+    {
+      float currentTime = Time.realtimeSinceStartup;
+      float lastCommandTime;
 
-      string playerCountText = string.Format("Online Players: {0}", playerCount);
-      string adminCountText = string.Format("Online Admins: {0}", adminCount);
+      if (playerLastCommandTimes.TryGetValue(player.Id, out lastCommandTime))
+      {
+        float commandDelay = config.DelaySeconds;
 
-      string response = $"[Player Count] {playerCountText} - {adminCountText}";
+        if (currentTime - lastCommandTime < commandDelay)
+          return false;
+      }
 
-      foreach (var onlinePlayer in players.Connected)
-      {
-        server.Broadcast(response, null, player.Id);
-      }
-    }
-  }
+      playerLastCommandTimes[player.Id] = currentTime;
+      return true;
+    }
+
+    [Command("pop")]
+    private void PopCommand(IPlayer player, string command, string[] args)
+    {
+      if (!CanExecuteCommand(player))
+        return;
+
+      int adminCount = 0;
+      int playerCount = 0;
+
+      foreach (var basePlayer in BasePlayer.activePlayerList)
+      {
+        if (basePlayer.IsAdmin)
+          adminCount++;
+        else
+          playerCount++;
+      }
+
+      string playerCountText = string.Format(GetMessage("PlayerCountFormat", player.Id), playerCount);
+      string adminCountText = player.HasPermission(AdminCountPermission) ? string.Format(GetMessage("AdminCountFormat", player.Id), adminCount) : "";
+
+      string response = $"[Player Count] {playerCountText} {adminCountText}";
+
+      player.Reply(response, null, player.Id);
+    }
+  }
 }
