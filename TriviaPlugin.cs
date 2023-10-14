@@ -1,3 +1,5 @@
+//not fully working, bug that stops questions needs fixing, also needs a second timer to prevent question spam after being unanswered
+
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
 using System;
