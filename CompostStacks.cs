@@ -9,22 +9,25 @@ namespace Oxide.Plugins
     public class CompostStacks : RustPlugin
     {
         private bool CompostEntireStack = true;
-        private string permissionName = "compoststacks.use"; // Customize the permission name
+        private const string permissionName = "compoststacks.use"; // Permission name
 
         private void OnServerInitialized()
         {
+            permission.RegisterPermission(permissionName, this);
             UpdateComposters();
         }
 
-        private void OnEntitySpawned(BaseNetworkable entity)
+        private void OnEntityBuilt(Planner plan, GameObject go)
         {
-            if (entity is Composter)
+            // Check if the placed entity is a Composter
+            if (go.GetComponent<Composter>() != null)
             {
-                Composter composter = entity as Composter;
+                ulong playerID = plan.GetOwnerPlayer().userID;
 
                 // Check if the player has the required permission
-                if (HasPermission(composter.OwnerID))
+                if (HasPermission(playerID))
                 {
+                    Composter composter = go.GetComponent<Composter>();
                     composter.CompostEntireStack = CompostEntireStack;
                 }
             }
@@ -34,8 +37,11 @@ namespace Oxide.Plugins
         {
             foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter))
             {
+                // This will apply to all existing composters on server initialization.
+                ulong ownerID = composter.OwnerID;
+
                 // Check if the player has the required permission
-                if (HasPermission(composter.OwnerID))
+                if (HasPermission(ownerID))
                 {
                     composter.CompostEntireStack = CompostEntireStack;
                 }
