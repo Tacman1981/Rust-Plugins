@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Oxide.Plugins;
+using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
@@ -17,18 +19,24 @@ namespace Oxide.Plugins
             UpdateComposters();
         }
 
-        private void OnEntityBuilt(Planner plan, GameObject go)
+        private void OnEntitySpawned(BaseNetworkable entity)
         {
-            // Check if the placed entity is a Composter
-            if (go.GetComponent<Composter>() != null)
+            if (entity is Composter composter)
             {
-                ulong playerID = plan.GetOwnerPlayer().userID;
+                IPlayer ownerPlayer = covalence.Players.FindPlayerById(composter.OwnerID.ToString());
 
-                // Check if the player has the required permission
-                if (HasPermission(playerID))
+                if (ownerPlayer != null)
                 {
-                    Composter composter = go.GetComponent<Composter>();
-                    composter.CompostEntireStack = CompostEntireStack;
+                    composter.CompostEntireStack = true; // Set to true by default
+
+                    if (!HasPermission(ownerPlayer))
+                    {
+                        return;
+                    }
+                    else
+                    {
+                        ownerPlayer.Message("<color=green>This composter can compost entire stacks!</color>");
+                    }
                 }
             }
         }
@@ -37,21 +45,25 @@ namespace Oxide.Plugins
         {
             foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter))
             {
-                // This will apply to all existing composters on server initialization.
-                ulong ownerID = composter.OwnerID;
+                IPlayer ownerPlayer = covalence.Players.FindPlayerById(composter.OwnerID.ToString());
 
-                // Check if the player has the required permission
-                if (HasPermission(ownerID))
+                if (ownerPlayer != null)
                 {
-                    composter.CompostEntireStack = CompostEntireStack;
+                    composter.CompostEntireStack = true; // Set to true by default
+
+                    if (!HasPermission(ownerPlayer))
+                    {
+                        composter.CompostEntireStack = false; // Disable for unauthorized owners
+                        // Optionally add logging here to track disabled composters
+                    }
                 }
             }
         }
 
-        private bool HasPermission(ulong playerId)
+        private bool HasPermission(IPlayer player)
         {
             // Check if the player has the required permission
-            return permission.UserHasPermission(playerId.ToString(), permissionName);
+            return player.HasPermission(permissionName);
         }
     }
 }
