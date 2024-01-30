@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -9,6 +9,7 @@ namespace Oxide.Plugins
     public class CompostStacks : RustPlugin
     {
         private bool CompostEntireStack = true;
+        private string permissionName = "compoststacks.use"; // Customize the permission name
 
         private void OnServerInitialized()
         {
@@ -20,7 +21,12 @@ namespace Oxide.Plugins
             if (entity is Composter)
             {
                 Composter composter = entity as Composter;
-                composter.CompostEntireStack = CompostEntireStack;
+
+                // Check if the player has the required permission
+                if (HasPermission(composter.OwnerID))
+                {
+                    composter.CompostEntireStack = CompostEntireStack;
+                }
             }
         }
 
@@ -28,8 +34,18 @@ namespace Oxide.Plugins
         {
             foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter))
             {
-                composter.CompostEntireStack = CompostEntireStack;
+                // Check if the player has the required permission
+                if (HasPermission(composter.OwnerID))
+                {
+                    composter.CompostEntireStack = CompostEntireStack;
+                }
             }
+        }
+
+        private bool HasPermission(ulong playerId)
+        {
+            // Check if the player has the required permission
+            return permission.UserHasPermission(playerId.ToString(), permissionName);
         }
     }
 }
