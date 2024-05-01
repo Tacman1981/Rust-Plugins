@@ -12,9 +12,14 @@ namespace Oxide.Plugins
     {
         private string logFilePath;
 
+        private const string LastSeenPermission = "connectlogger.lastseen";
+
         private void Init()
         {
             logFilePath = Path.Combine(Interface.Oxide.LogDirectory, "ConnectLogs.txt");
+            
+            // Register the permission
+            permission.RegisterPermission(LastSeenPermission, this);
         }
 
         private void OnPlayerConnected(BasePlayer player)
@@ -81,21 +86,36 @@ namespace Oxide.Plugins
         }
 
         [ChatCommand("lastseen")]
-        private string GetLastSeenMessage(string targetUserID)
+private void GetLastSeenMessage(BasePlayer player, string command, string[] args)
 {
-    BasePlayer targetPlayer = null;
-    foreach (BasePlayer player in BasePlayer.activePlayerList)
+    if (!permission.UserHasPermission(player.UserIDString, LastSeenPermission))
     {
-        if (player.UserIDString == targetUserID)
+        player.ChatMessage("You don't have permission to use this command.");
+        return;
+    }
+
+    if (args.Length == 0)
+    {
+        player.ChatMessage("Usage: /lastseen <playerName>");
+        return;
+    }
+
+    string targetPlayerName = args[0];
+
+    BasePlayer targetPlayer = null;
+    foreach (BasePlayer p in BasePlayer.activePlayerList)
+    {
+        if (p.displayName.Equals(targetPlayerName, StringComparison.OrdinalIgnoreCase))
         {
-            targetPlayer = player;
+            targetPlayer = p;
             break;
         }
     }
 
     if (targetPlayer != null)
     {
-        return $"Player is currently online.";
+        player.ChatMessage($"Player {targetPlayer.displayName} is currently online.");
+        return;
     }
 
     DateTime lastSeenTime = DateTime.MinValue;
@@ -107,7 +127,7 @@ namespace Oxide.Plugins
 
         foreach (string logLine in logLines)
         {
-            if (logLine.Contains($"({targetUserID})") && logLine.Contains("[DISCONNECT]"))
+            if (logLine.IndexOf(targetPlayerName, StringComparison.OrdinalIgnoreCase) >= 0 && logLine.Contains("[DISCONNECT]"))
             {
                 int startIndex = logLine.IndexOf('[') + 1;
                 int endIndex = logLine.IndexOf(']');
@@ -143,7 +163,7 @@ namespace Oxide.Plugins
         lastSeenMessage = "Player logs not found.";
     }
 
-    return lastSeenMessage;
+    player.ChatMessage(lastSeenMessage);
 }
 
     }
