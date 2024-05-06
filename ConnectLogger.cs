@@ -44,7 +44,7 @@ namespace Oxide.Plugins
             }
 
             // Log player disconnection with timestamp and IP address
-            string logMessage = $"[{DateTime.Now}] [DISCONNECT] {player.displayName} ({player.UserIDString}) disconnected from {ipAddress}. Reason: {reason}";
+            string logMessage = $"[{DateTime.Now}] [DISCONNECT] {player.displayName} ({player.UserIDString}) disconnected. Reason: {reason}";
             LogToFile(logFilePath, logMessage, true);
         }
 
