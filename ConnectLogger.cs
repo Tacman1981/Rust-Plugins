@@ -34,16 +34,13 @@ namespace Oxide.Plugins
 
         private void OnPlayerDisconnected(BasePlayer player, string reason)
         {
-            // Get the player's IP address without the port
-            string ipAddress = player.net.connection.ipaddress.Split(':')[0];
-
             // If the disconnection reason is not provided, log it with a default reason
             if (string.IsNullOrEmpty(reason))
             {
                 reason = "Disconnected (No reason given)";
             }
 
-            // Log player disconnection with timestamp and IP address
+            // Log player disconnection with timestamp
             string logMessage = $"[{DateTime.Now}] [DISCONNECT] {player.displayName} ({player.UserIDString}) disconnected. Reason: {reason}";
             LogToFile(logFilePath, logMessage, true);
         }
