@@ -78,7 +78,7 @@ namespace Oxide.Plugins
         
                     if (currentCupboards >= maxCupboards)
                     {
-                        player.ChatMessage("You have reached the maximum limit of tool cupboards.");
+                        player.ChatMessage("You have reached the maximum limit of tool cupboards. {currentCupboards}/{maxCupboards}");
                         return false;
                     }
                     else
@@ -104,7 +104,11 @@ namespace Oxide.Plugins
                 {
                     placedCupboards[ownerID]++;
                 }
-                //Debug.Log($"TCLimiter: New tool cupboard built by player {player.displayName} with owner ID {ownerID}.");
+
+                // Display a message to the player
+                int currentCupboards = placedCupboards[ownerID];
+                int maxCupboards = Config.Get<int>("MaxCupboards");
+                player.ChatMessage($"You have placed {currentCupboards} out of {maxCupboards} tool cupboards.");
             }
         }
 
