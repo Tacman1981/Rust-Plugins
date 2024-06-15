@@ -79,8 +79,7 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    //player.ChatMessage("You have placed 0 out of 1 tool cupboards.");
-                    //player.ChatMessage("You have 1 tool cupboard left.");
+                    player.ChatMessage("You have placed no Tool Cupboards yet!");
                 }
             }
             else
