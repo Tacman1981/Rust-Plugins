@@ -37,7 +37,7 @@ namespace Oxide.Plugins
 
             if (count >= maxCupboards)
             {
-                player.ChatMessage("You have reached your maximum allowed tool cupboards.");
+                player.ChatMessage("You have reached your maximum allowed tool cupboards. You have been fined 1 tool cupboard for trying to exceed limits");
                 buildingPrivilege.Kill();
                 return;
             }
