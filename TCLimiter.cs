@@ -1,128 +1,135 @@
 using System.Collections.Generic;
-using Oxide.Core;
-using Oxide.Core.Plugins;
 using UnityEngine;
-using Rust;
+using Oxide.Core;
+using System;
 
 namespace Oxide.Plugins
 {
-    [Info("Tool Cupboard Limit", "Tacman", "1.0.0")]
+    [Info("Tool Cupboard Limit", "Tacman", "1.1.1")]
     class TCLimiter : RustPlugin
     {
         private Dictionary<ulong, int> placedCupboards = new Dictionary<ulong, int>();
-        private int maxCupboards;
 
         void OnServerInitialized()
         {
-            LoadConfigValues();
-            DetectExistingCupboards();
-            Debug.Log("TCLimiter: Plugin Initialized.");
+            LoadExistingCupboards();
         }
 
-        private void DetectExistingCupboards()
+        void OnEntityBuilt(Planner planner, GameObject go)
         {
-            // Iterate through all entities in the game world
-            foreach (var entity in BaseNetworkable.serverEntities)
+            var player = planner?.GetOwnerPlayer();
+            if (player == null || go == null)
+                return;
+
+            var buildingPrivilege = go.GetComponent<BuildingPrivlidge>();
+            if (buildingPrivilege == null || buildingPrivilege.OwnerID != player.userID)
+                return;
+
+            var maxCupboards = GetMaxCupboards(player);
+
+            if (!placedCupboards.TryGetValue(player.userID, out int count))
             {
-                if (entity == null) continue;
+                placedCupboards[player.userID] = 0; // Initialize count if not found
+            }
+
+            if (count >= maxCupboards)
+            {
+                player.ChatMessage("You have reached your maximum allowed tool cupboards.");
+                buildingPrivilege.Kill();
+                return;
+            }
+
+            placedCupboards[player.userID]++;
+            player.ChatMessage($"You have placed {placedCupboards[player.userID]} of {maxCupboards} tool cupboards.");
+        }
+
+        void OnEntityKill(BaseNetworkable entity)
+        {
+            var cupboard = entity.GetComponent<BuildingPrivlidge>();
+            if (cupboard == null || cupboard.OwnerID == 0)
+                return;
         
-                // Check if the entity is a cupboard
-                if (entity is BuildingPrivlidge && entity.ShortPrefabName.Contains("cupboard"))
+            if (placedCupboards.ContainsKey(cupboard.OwnerID) && placedCupboards[cupboard.OwnerID] > 0)
+            {
+                placedCupboards[cupboard.OwnerID]--;
+            }
+        
+            // Schedule LoadExistingCupboards to run on the next server tick
+            NextTick(() =>
+            {
+                LoadExistingCupboards();
+            });
+        }
+
+        [ChatCommand("TC")]
+        void TCCommand(BasePlayer player, string command, string[] args)
+        {
+            if (player == null)
+                return;
+
+            LoadExistingCupboards();
+
+            if (args.Length == 0)
+            {
+                if (placedCupboards.TryGetValue(player.userID, out int count))
                 {
-                    var buildingPrivlidge = entity as BuildingPrivlidge;
-                    if (buildingPrivlidge != null)
-                    {
-                        var ownerID = buildingPrivlidge.OwnerID;
-                        if (!placedCupboards.ContainsKey(ownerID))
-                        {
-                            placedCupboards[ownerID] = 1;
-                        }
-                        else
-                        {
-                            placedCupboards[ownerID]++;
-                        }
-                        //Debug.Log($"TCLimiter: Detected existing cupboard with owner ID {ownerID}.");
-                    }
+                    var maxCupboards = GetMaxCupboards(player);
+                    player.ChatMessage($"You have placed {count} out of {maxCupboards} tool cupboards.");
+                    player.ChatMessage($"You have {maxCupboards - count} tool cupboards left.");
+                }
+                else
+                {
+                    //player.ChatMessage("You have placed 0 out of 1 tool cupboards.");
+                    //player.ChatMessage("You have 1 tool cupboard left.");
                 }
             }
+            else
+            {
+                player.ChatMessage("Usage: /TC");
+            }
+        }
+
+        void LoadExistingCupboards()
+        {
+            placedCupboards.Clear();
+
+            foreach (var entity in BaseNetworkable.serverEntities)
+            {
+                var cupboard = entity.GetComponent<BuildingPrivlidge>();
+                if (cupboard != null && cupboard.OwnerID != 0)
+                {
+                    if (!placedCupboards.ContainsKey(cupboard.OwnerID))
+                        placedCupboards[cupboard.OwnerID] = 0;
+
+                    placedCupboards[cupboard.OwnerID]++;
+                }
+            }
+        }
+
+        int GetMaxCupboards(BasePlayer player)
+        {
+            var permissions = Config.Get<Dictionary<string, object>>("Permissions");
+            foreach (var kvp in permissions)
+            {
+                if (permission.UserHasPermission(player.UserIDString, kvp.Key))
+                {
+                    return Convert.ToInt32(kvp.Value);
+                }
+            }
+            return Config.Get<int>("MaxCupboards"); // Default max cupboards if no permissions match
         }
 
         protected override void LoadDefaultConfig()
         {
-            // Set default values only if the config doesn't exist
-            if (Config.Get("MaxCupboards") == null)
+            Config["MaxCupboards"] = 1; // Default value as integer
+            var defaultPermissions = new Dictionary<string, object>
             {
-                Config.Set("MaxCupboards", 5); // Default value as integer
-                Config.Save();
-                Debug.Log("TCLimiter: Default config loaded and saved.");
-            }
-        }
-
-        private void LoadConfigValues()
-        {
-            // Load config values
-            maxCupboards = Config.Get<int>("MaxCupboards");
-            Debug.Log("TCLimiter: Config values loaded.");
-        }
-
-        object CanBuild(Planner planner, Construction prefab, Construction.Target target)
-        {
-            if (prefab.fullName.Contains("cupboard"))
-            {
-                BasePlayer player = planner.GetOwnerPlayer();
-                if (player != null && !player.IsAdmin)
-                {
-                    var ownerID = player.userID;
-                    int currentCupboards = placedCupboards.ContainsKey(ownerID) ? placedCupboards[ownerID] : 0;
-                    int maxCupboards = Config.Get<int>("MaxCupboards");
-        
-                    if (currentCupboards >= maxCupboards)
-                    {
-                        player.ChatMessage("You have reached the maximum limit of tool cupboards. {currentCupboards}/{maxCupboards}");
-                        return false;
-                    }
-                    else
-                    {
-                        return null; // Allow building since player hasn't reached the limit
-                    }
-                }
-            }
-            return null; // Allow building if not a tool cupboard
-        }
-
-        void OnEntityBuilt(Planner planner, GameObject gameObject)
-        {
-            BasePlayer player = planner.GetOwnerPlayer();
-            if (player != null && gameObject.name.Contains("cupboard"))
-            {
-                var ownerID = player.userID;
-                if (!placedCupboards.ContainsKey(ownerID))
-                {
-                    placedCupboards[ownerID] = 1;
-                }
-                else
-                {
-                    placedCupboards[ownerID]++;
-                }
-
-                // Display a message to the player
-                int currentCupboards = placedCupboards[ownerID];
-                int maxCupboards = Config.Get<int>("MaxCupboards");
-                player.ChatMessage($"You have placed {currentCupboards} out of {maxCupboards} tool cupboards.");
-            }
-        }
-
-        void OnEntityKill(BaseEntity entity)
-        {
-            if (entity.ShortPrefabName.Contains("cupboard"))
-            {
-                var ownerID = entity.OwnerID;
-                if (ownerID != 0 && placedCupboards.ContainsKey(ownerID))
-                {
-                    placedCupboards[ownerID]--;
-                    //Debug.Log($"TCLimiter: Tool cupboard destroyed with owner ID {ownerID}.");
-                }
-            }
+                { "tclimiter.vip", 10 },
+                { "tclimiter.discord", 8 },
+                { "tclimiter.bypass", 100 }
+            };
+            Config["Permissions"] = defaultPermissions;
+            SaveConfig();
         }
     }
 }
