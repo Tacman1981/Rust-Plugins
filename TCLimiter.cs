@@ -18,7 +18,7 @@ namespace Oxide.Plugins
         void OnEntityBuilt(Planner planner, GameObject go)
         {
             var player = planner?.GetOwnerPlayer();
-            if (player == null || go == null)
+            if (player == null || go == null || player.IsAdmin)
                 return;
 
             var buildingPrivilege = go.GetComponent<BuildingPrivlidge>();
