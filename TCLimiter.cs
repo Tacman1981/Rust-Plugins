@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Oxide.Core;
 using System;
+using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
@@ -12,6 +13,8 @@ namespace Oxide.Plugins
 
         void OnServerInitialized()
         {
+            LoadDefaultConfig();
+            LoadPermissions();
             LoadExistingCupboards();
         }
 
@@ -64,9 +67,12 @@ namespace Oxide.Plugins
         [ChatCommand("TC")]
         void TCCommand(BasePlayer player, string command, string[] args)
         {
-            if (player == null)
+            if (player == null || player.IsAdmin)
+            {
+                player.ChatMessage("You are in admin mode and have no limits, enjoy");
                 return;
-
+            }
+            
             LoadExistingCupboards();
 
             if (args.Length == 0)
@@ -118,17 +124,39 @@ namespace Oxide.Plugins
             return Config.Get<int>("MaxCupboards"); // Default max cupboards if no permissions match
         }
 
-        protected override void LoadDefaultConfig()
+void LoadDefaultConfig()
+{
+    // Get the current value of MaxCupboards from the config, convert it to int
+    int defaultMaxCupboards;
+    if (!int.TryParse(Config.Get<string>("MaxCupboards"), out defaultMaxCupboards))
+    {
+        defaultMaxCupboards = 1; // Set default value if MaxCupboards is not valid or found
+        Config.Set("MaxCupboards", defaultMaxCupboards.ToString()); // Ensure it's set as a string
+    }
+
+    // Set default permissions if not already set in the config
+    var defaultPermissions = new Dictionary<string, object>
+    {
+        { "tclimiter.vip", 10 },
+        { "tclimiter.discord", 8 },
+        { "tclimiter.bypass", 100 }
+    };
+
+    // Ensure permissions are stored as a string in the configuration
+    Config.Set("Permissions", defaultPermissions);
+
+    // Save the config to disk
+    SaveConfig();
+}
+
+        // Load permissions from the configuration
+        void LoadPermissions()
         {
-            Config["MaxCupboards"] = 1; // Default value as integer
-            var defaultPermissions = new Dictionary<string, object>
+            var permissionsConfig = Config.Get<Dictionary<string, object>>("Permissions");
+            foreach (var kvp in permissionsConfig)
             {
-                { "tclimiter.vip", 10 },
-                { "tclimiter.discord", 8 },
-                { "tclimiter.bypass", 100 }
-            };
-            Config["Permissions"] = defaultPermissions;
-            SaveConfig();
+                permission.RegisterPermission(kvp.Key, this);
+            }
         }
     }
 }
