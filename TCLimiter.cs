@@ -124,30 +124,30 @@ namespace Oxide.Plugins
             return Config.Get<int>("MaxCupboards"); // Default max cupboards if no permissions match
         }
 
-void LoadDefaultConfig()
-{
-    // Get the current value of MaxCupboards from the config, convert it to int
-    int defaultMaxCupboards;
-    if (!int.TryParse(Config.Get<string>("MaxCupboards"), out defaultMaxCupboards))
-    {
-        defaultMaxCupboards = 1; // Set default value if MaxCupboards is not valid or found
-        Config.Set("MaxCupboards", defaultMaxCupboards.ToString()); // Ensure it's set as a string
-    }
-
-    // Set default permissions if not already set in the config
-    var defaultPermissions = new Dictionary<string, object>
-    {
-        { "tclimiter.vip", 10 },
-        { "tclimiter.discord", 8 },
-        { "tclimiter.bypass", 100 }
-    };
-
-    // Ensure permissions are stored as a string in the configuration
-    Config.Set("Permissions", defaultPermissions);
-
-    // Save the config to disk
-    SaveConfig();
-}
+        void LoadDefaultConfig()
+        {
+            // Get the current value of MaxCupboards from the config, convert it to int
+            int defaultMaxCupboards;
+            if (!int.TryParse(Config.Get<string>("MaxCupboards"), out defaultMaxCupboards))
+            {
+                defaultMaxCupboards = 1; // Set default value if MaxCupboards is not valid or found
+                Config.Set("MaxCupboards", defaultMaxCupboards.ToString()); // Ensure it's set as a string
+            }
+        
+            // Set default permissions if not already set in the config
+            var defaultPermissions = new Dictionary<string, object>
+            {
+                { "tclimiter.vip", 10 },
+                { "tclimiter.discord", 8 },
+                { "tclimiter.bypass", 100 }
+            };
+        
+            // Ensure permissions are stored as a string in the configuration
+            Config.Set("Permissions", defaultPermissions);
+        
+            // Save the config to disk
+            SaveConfig();
+        }
 
         // Load permissions from the configuration
         void LoadPermissions()
