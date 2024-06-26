@@ -37,7 +37,7 @@ namespace Oxide.Plugins
 
             if (count >= maxCupboards)
             {
-                player.ChatMessage("You have reached your maximum allowed tool cupboards. You have been fined 1 tool cupboard for trying to exceed limits");
+                player.ChatMessage($"{player.displayName}, you have been fined 1 tool cupboard for attempting to breach cupboard limits.");
                 buildingPrivilege.Kill();
                 return;
             }
@@ -114,14 +114,21 @@ namespace Oxide.Plugins
         int GetMaxCupboards(BasePlayer player)
         {
             var permissions = Config.Get<Dictionary<string, object>>("Permissions");
+            int maxCupboards = Config.Get<int>("MaxCupboards"); // Default max cupboards
+        
             foreach (var kvp in permissions)
             {
                 if (permission.UserHasPermission(player.UserIDString, kvp.Key))
                 {
-                    return Convert.ToInt32(kvp.Value);
+                    int permissionMax = Convert.ToInt32(kvp.Value);
+                    if (permissionMax > maxCupboards)
+                    {
+                        maxCupboards = permissionMax;
+                    }
                 }
             }
-            return Config.Get<int>("MaxCupboards"); // Default max cupboards if no permissions match
+        
+            return maxCupboards;
         }
 
         void LoadDefaultConfig()
@@ -131,21 +138,27 @@ namespace Oxide.Plugins
             if (!int.TryParse(Config.Get<string>("MaxCupboards"), out defaultMaxCupboards))
             {
                 defaultMaxCupboards = 1; // Set default value if MaxCupboards is not valid or found
-                Config.Set("MaxCupboards", defaultMaxCupboards.ToString()); // Ensure it's set as a string
             }
         
+            // Set the default value in the config (if not already set)
+            Config.Set("MaxCupboards", defaultMaxCupboards.ToString());
+        
             // Set default permissions if not already set in the config
-            var defaultPermissions = new Dictionary<string, object>
+            var currentPermissions = Config.Get<Dictionary<string, object>>("Permissions");
+            if (currentPermissions == null || currentPermissions.Count == 0)
             {
-                { "tclimiter.vip", 10 },
-                { "tclimiter.discord", 8 },
-                { "tclimiter.bypass", 100 }
-            };
+                var defaultPermissions = new Dictionary<string, object>
+                {
+                    { "tclimiter.vip", 10 },
+                    { "tclimiter.discord", 8 },
+                    { "tclimiter.bypass", 100 }
+                };
         
-            // Ensure permissions are stored as a string in the configuration
-            Config.Set("Permissions", defaultPermissions);
+                // Set default permissions in the config
+                Config.Set("Permissions", defaultPermissions);
+            }
         
-            // Save the config to disk
+            // Save the config to disk (if any changes were made)
             SaveConfig();
         }
 
