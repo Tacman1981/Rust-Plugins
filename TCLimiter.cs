@@ -48,22 +48,16 @@ namespace Oxide.Plugins
 
         void OnEntityKill(BaseNetworkable entity)
         {
-            var cupboard = entity.GetComponent<BuildingPrivlidge>();
+            var cupboard = entity?.GetComponent<BuildingPrivlidge>();
             if (cupboard == null || cupboard.OwnerID == 0)
                 return;
-        
+
             if (placedCupboards.ContainsKey(cupboard.OwnerID) && placedCupboards[cupboard.OwnerID] > 0)
             {
-                placedCupboards[cupboard.OwnerID]--;
-            }
-        
-            // Schedule LoadExistingCupboards to run on the next server tick
-            NextTick(() =>
-            {
                 LoadExistingCupboards();
-            });
+            }
         }
-
+        
         [ChatCommand("TC")]
         void TCCommand(BasePlayer player, string command, string[] args)
         {
@@ -96,16 +90,38 @@ namespace Oxide.Plugins
 
         void LoadExistingCupboards()
         {
+            // Clear the dictionary of placed cupboards
             placedCupboards.Clear();
-
+        
+            // Check if serverEntities is not null
+            if (BaseNetworkable.serverEntities == null)
+            {
+                Debug.LogError("BaseNetworkable.serverEntities is null.");
+                return;
+            }
+        
+            // Iterate over each entity in the serverEntities
             foreach (var entity in BaseNetworkable.serverEntities)
             {
-                var cupboard = entity.GetComponent<BuildingPrivlidge>();
+                // Skip if the entity is null
+                if (entity == null)
+                {
+                    continue;
+                }
+        
+                // Try to get the BuildingPrivlidge component from the entity
+                BuildingPrivlidge cupboard = entity.GetComponent<BuildingPrivlidge>();
+        
+                // If the cupboard component is found and has a valid OwnerID
                 if (cupboard != null && cupboard.OwnerID != 0)
                 {
+                    // If the OwnerID is not already in the dictionary, add it with a count of 0
                     if (!placedCupboards.ContainsKey(cupboard.OwnerID))
+                    {
                         placedCupboards[cupboard.OwnerID] = 0;
-
+                    }
+        
+                    // Increment the count for the OwnerID
                     placedCupboards[cupboard.OwnerID]++;
                 }
             }
