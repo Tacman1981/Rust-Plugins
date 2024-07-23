@@ -57,6 +57,23 @@ namespace Oxide.Plugins
                 LoadExistingCupboards();
             }
         }
+
+        void OnEntitySpawned(BaseNetworkable entity)
+        {
+            var buildingPrivilege = entity as BuildingPrivlidge;
+            if (buildingPrivilege != null && buildingPrivilege.OwnerID != 0)
+            {
+                // Increment the count for the OwnerID if it's a new cupboard
+                if (!placedCupboards.ContainsKey(buildingPrivilege.OwnerID))
+                {
+                    placedCupboards[buildingPrivilege.OwnerID] = 0;
+                }
+
+                placedCupboards[buildingPrivilege.OwnerID]++;
+                Puts($"Tool Cupboard spawned with OwnerID: {buildingPrivilege.OwnerID}");
+            }
+        }
+        
         
         [ChatCommand("TC")]
         void TCCommand(BasePlayer player, string command, string[] args)
