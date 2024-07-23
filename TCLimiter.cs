@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Tool Cupboard Limit", "Tacman", "1.1.1")]
+    [Info("Tool Cupboard Limit", "Tacman", "1.2.0")]
     class TCLimiter : RustPlugin
     {
         private Dictionary<ulong, int> placedCupboards = new Dictionary<ulong, int>();
