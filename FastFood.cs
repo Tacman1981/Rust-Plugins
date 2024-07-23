@@ -13,7 +13,7 @@ namespace Oxide.Plugins
     [Description("No delay between eating")]
     public class FastFood : CovalencePlugin
     {
-        private PluginConfig config;
+        private PluginConfig config
 
         private void Init()
         {
