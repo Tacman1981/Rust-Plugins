@@ -39,7 +39,7 @@ namespace Oxide.Plugins
             {
                 player.ChatMessage($"{player.displayName}, you have been fined 1 tool cupboard for attempting to breach cupboard limits.");
                 buildingPrivilege.Kill();
-                return;
+                return; //returning so it does not proceed any further and add another cupboard for no reason
             }
 
             placedCupboards[player.userID]++;
@@ -54,10 +54,10 @@ namespace Oxide.Plugins
 
             if (placedCupboards.ContainsKey(cupboard.OwnerID) && placedCupboards[cupboard.OwnerID] > 0)
             {
-                LoadExistingCupboards();
+                placedCupboards[cupboard.OwnerID]--; // Decrement the count for the OwnerID
             }
         }
-
+            //this is used when a player reskins their cupboard, so when it decrements using OnEntityKill it increments correctly. this method should now prevent having to check existing over and over.
         void OnEntitySpawned(BaseNetworkable entity)
         {
             var buildingPrivilege = entity as BuildingPrivlidge;
@@ -70,10 +70,9 @@ namespace Oxide.Plugins
                 }
 
                 placedCupboards[buildingPrivilege.OwnerID]++;
-                Puts($"Tool Cupboard spawned with OwnerID: {buildingPrivilege.OwnerID}");
+                //Puts($"Tool Cupboard spawned with OwnerID: {buildingPrivilege.OwnerID}");
             }
         }
-        
         
         [ChatCommand("TC")]
         void TCCommand(BasePlayer player, string command, string[] args)
