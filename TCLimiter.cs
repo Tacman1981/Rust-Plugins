@@ -82,9 +82,6 @@ namespace Oxide.Plugins
                 player.ChatMessage("You are in admin mode and have no limits, enjoy");
                 return;
             }
-            
-            LoadExistingCupboards();
-
             if (args.Length == 0)
             {
                 if (placedCupboards.TryGetValue(player.userID, out int count))
@@ -97,10 +94,6 @@ namespace Oxide.Plugins
                 {
                     player.ChatMessage("You have placed no Tool Cupboards yet!");
                 }
-            }
-            else
-            {
-                player.ChatMessage("Usage: /TC");
             }
         }
 
