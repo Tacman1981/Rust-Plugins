@@ -18,7 +18,7 @@ namespace Oxide.Plugins
         protected override void LoadDefaultConfig()
         {
             Config["ConfigVersion"] = configVersion;
-            Config["ScrapCost"] = 20745; // Default scrap cost
+            Config["ScrapCost"] = 25000; // Default scrap cost
             Config["LearnCommand"] = "learnbps"; // Default command name
             SaveConfig();
         }
