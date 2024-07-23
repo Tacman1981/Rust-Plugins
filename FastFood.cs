@@ -7,6 +7,8 @@ using Oxide.Core;
 using Oxide.Core.Configuration;
 using Oxide.Core.Libraries.Covalence;
 
+//purposely created a compile error. not hard to find if you know.
+
 namespace Oxide.Plugins
 {
     [Info("Fast Food", "Verkade/Maintained by Tacman", "0.0.3")]
@@ -58,7 +60,7 @@ namespace Oxide.Plugins
 
         private bool IsBlacklisted(string shortname)
         {
-            return config.BlacklistedItems.Contains(shortname);
+            return config.BlacklistedItems.Contains(!shortname);
         }
 
         private class PluginConfig
