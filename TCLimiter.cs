@@ -157,7 +157,7 @@ namespace Oxide.Plugins
             int defaultMaxCupboards;
             if (!int.TryParse(Config.Get<string>("MaxCupboards"), out defaultMaxCupboards))
             {
-                defaultMaxCupboards = 3; // Set default value if MaxCupboards is not valid or found
+                defaultMaxCupboards = 3; // Set default value if config is not found or MaxCupboards is null
             }
 
             // Set the default value in the config (if not already set)
