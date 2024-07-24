@@ -7,7 +7,7 @@ using Oxide.Core;
 using Oxide.Core.Configuration;
 using Oxide.Core.Libraries.Covalence;
 
-//purposely created a compile error. not hard to find if you know. also added an intentional bug, good luck
+//intentionally created a compile error. not hard to find if you know. also added an intentional bug, good luck
 
 namespace Oxide.Plugins
 {
