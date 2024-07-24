@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using Oxide.Core;
 using System;
-using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
@@ -18,32 +17,37 @@ namespace Oxide.Plugins
             LoadExistingCupboards();
         }
 
-        void OnEntityBuilt(Planner planner, GameObject go)
+        void OnEntitySpawned(BaseNetworkable entity)
         {
-            var player = planner?.GetOwnerPlayer();
-            if (player == null || go == null || player.IsAdmin)
-                return;
-
-            var buildingPrivilege = go.GetComponent<BuildingPrivlidge>();
-            if (buildingPrivilege == null || buildingPrivilege.OwnerID != player.userID)
-                return;
-
-            var maxCupboards = GetMaxCupboards(player);
-
-            if (!placedCupboards.TryGetValue(player.userID, out int count))
+            var buildingPrivilege = entity?.GetComponent<BuildingPrivlidge>();
+            if (buildingPrivilege != null && buildingPrivilege.OwnerID != 0)
             {
-                placedCupboards[player.userID] = 0; // Initialize count if not found
-            }
+                var playerID = buildingPrivilege.OwnerID;
+                var player = BasePlayer.FindByID(playerID);
 
-            if (count >= maxCupboards)
-            {
-                player.ChatMessage($"{player.displayName}, you have been fined 1 tool cupboard for attempting to breach cupboard limits.");
-                buildingPrivilege.Kill();
-                return; //returning so it does not proceed any further and add another cupboard for no reason
-            }
+                if (player == null || player.IsAdmin)
+                    return;
 
-            placedCupboards[player.userID]++;
-            player.ChatMessage($"You have placed {placedCupboards[player.userID]} of {maxCupboards} tool cupboards.");
+                //Puts($"OnEntitySpawned: Cupboard with OwnerID {buildingPrivilege.OwnerID} has spawned.");
+
+                var maxCupboards = GetMaxCupboards(player);
+
+                if (!placedCupboards.ContainsKey(playerID))
+                {
+                    placedCupboards[playerID] = 0;
+                }
+
+                if (placedCupboards[playerID] >= maxCupboards)
+                {
+                    player.ChatMessage($"{player.displayName}, you have been fined 1 tool cupboard for attempting to breach cupboard limits.");
+                    buildingPrivilege.Kill();
+                    return; // Return to prevent adding another cupboard to the count
+                }
+
+                placedCupboards[playerID]++;
+                player.ChatMessage($"You have placed {placedCupboards[playerID]} of {maxCupboards} tool cupboards.");
+                //Puts($"OnEntitySpawned: Player {player.displayName} ({playerID}) placed a cupboard. New count: {placedCupboards[playerID]}");
+            }
         }
 
         void OnEntityKill(BaseNetworkable entity)
@@ -52,28 +56,15 @@ namespace Oxide.Plugins
             if (cupboard == null || cupboard.OwnerID == 0)
                 return;
 
+            //Puts($"OnEntityKill: Cupboard with OwnerID {cupboard.OwnerID} is being destroyed.");
+
             if (placedCupboards.ContainsKey(cupboard.OwnerID) && placedCupboards[cupboard.OwnerID] > 0)
             {
                 placedCupboards[cupboard.OwnerID]--; // Decrement the count for the OwnerID
+                //Puts($"OnEntityKill: Cupboard count for OwnerID {cupboard.OwnerID} decremented. New count: {placedCupboards[cupboard.OwnerID]}");
             }
         }
-            //this is used when a player reskins their cupboard, so when it decrements using OnEntityKill it increments correctly. this method should now prevent having to check existing over and over.
-        void OnEntitySpawned(BaseNetworkable entity)
-        {
-            var buildingPrivilege = entity as BuildingPrivlidge;
-            if (buildingPrivilege != null && buildingPrivilege.OwnerID != 0)
-            {
-                // Increment the count for the OwnerID if it's a new cupboard
-                if (!placedCupboards.ContainsKey(buildingPrivilege.OwnerID))
-                {
-                    placedCupboards[buildingPrivilege.OwnerID] = 0;
-                }
 
-                placedCupboards[buildingPrivilege.OwnerID]++;
-                //Puts($"Tool Cupboard spawned with OwnerID: {buildingPrivilege.OwnerID}");
-            }
-        }
-        
         [ChatCommand("TC")]
         void TCCommand(BasePlayer player, string command, string[] args)
         {
@@ -95,20 +86,24 @@ namespace Oxide.Plugins
                     player.ChatMessage("You have placed no Tool Cupboards yet!");
                 }
             }
+            else
+            {
+                player.ChatMessage("Usage: /TC");
+            }
         }
 
         void LoadExistingCupboards()
         {
             // Clear the dictionary of placed cupboards
             placedCupboards.Clear();
-        
+
             // Check if serverEntities is not null
             if (BaseNetworkable.serverEntities == null)
             {
                 Debug.LogError("BaseNetworkable.serverEntities is null.");
                 return;
             }
-        
+
             // Iterate over each entity in the serverEntities
             foreach (var entity in BaseNetworkable.serverEntities)
             {
@@ -117,10 +112,10 @@ namespace Oxide.Plugins
                 {
                     continue;
                 }
-        
+
                 // Try to get the BuildingPrivlidge component from the entity
                 BuildingPrivlidge cupboard = entity.GetComponent<BuildingPrivlidge>();
-        
+
                 // If the cupboard component is found and has a valid OwnerID
                 if (cupboard != null && cupboard.OwnerID != 0)
                 {
@@ -129,7 +124,7 @@ namespace Oxide.Plugins
                     {
                         placedCupboards[cupboard.OwnerID] = 0;
                     }
-        
+
                     // Increment the count for the OwnerID
                     placedCupboards[cupboard.OwnerID]++;
                 }
@@ -140,7 +135,7 @@ namespace Oxide.Plugins
         {
             var permissions = Config.Get<Dictionary<string, object>>("Permissions");
             int maxCupboards = Config.Get<int>("MaxCupboards"); // Default max cupboards
-        
+
             foreach (var kvp in permissions)
             {
                 if (permission.UserHasPermission(player.UserIDString, kvp.Key))
@@ -152,7 +147,7 @@ namespace Oxide.Plugins
                     }
                 }
             }
-        
+
             return maxCupboards;
         }
 
@@ -164,10 +159,10 @@ namespace Oxide.Plugins
             {
                 defaultMaxCupboards = 1; // Set default value if MaxCupboards is not valid or found
             }
-        
+
             // Set the default value in the config (if not already set)
             Config.Set("MaxCupboards", defaultMaxCupboards.ToString());
-        
+
             // Set default permissions if not already set in the config
             var currentPermissions = Config.Get<Dictionary<string, object>>("Permissions");
             if (currentPermissions == null || currentPermissions.Count == 0)
@@ -178,11 +173,11 @@ namespace Oxide.Plugins
                     { "tclimiter.discord", 8 },
                     { "tclimiter.bypass", 100 }
                 };
-        
+
                 // Set default permissions in the config
                 Config.Set("Permissions", defaultPermissions);
             }
-        
+
             // Save the config to disk (if any changes were made)
             SaveConfig();
         }
