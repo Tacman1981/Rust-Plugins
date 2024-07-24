@@ -171,7 +171,7 @@ namespace Oxide.Plugins
                 {
                     { "tclimiter.vip", 10 },
                     { "tclimiter.discord", 8 },
-                    { "tclimiter.bypass", 100 }
+                    { "tclimiter.default", 6 }
                 };
 
                 // Set default permissions in the config
