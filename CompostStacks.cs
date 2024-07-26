@@ -7,7 +7,7 @@ using Oxide.Core.Libraries.Covalence;
 namespace Oxide.Plugins
 {
     [Info("Compost Stacks", "Tacman", "2.0.2")]
-    [Description("Toggle the CompostEntireStack boolean on load and for new Composter entities, which will compost entire stacks of all compostable items.")]
+    [Description("Toggle the CompostEntireStack boolean on load and for all Composter entities, which will compost entire stacks of all compostable items.")]
     public class CompostStacks : RustPlugin
     {
         private bool CompostEntireStack = true;
