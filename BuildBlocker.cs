@@ -261,7 +261,7 @@ namespace Oxide.Plugins
                 return null;
             }
 
-            //Get the prefab name to register the permission
+            //Get the prefab name
             string prefabShortName = prefab.fullName;
 
             //Check if the entity is in the permissions dictionary
