@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Oxide.Core.Plugins;
@@ -21,6 +21,12 @@ namespace Oxide.Plugins
             [JsonProperty(PropertyName = "Permissions")]
             public Dictionary<string, string> Permissions { get; set; } = new Dictionary<string, string>();
 
+            [JsonProperty(PropertyName = "Blacklist")]
+            public List<string> Blacklist { get; set; } = new List<string>();
+
+            [JsonProperty(PropertyName = "ALLPermission")]
+            public string ALLPermission { get; set; } = "canbuildthis.all";
+
             public static Configuration DefaultConfig()
             {
                 return new Configuration();
@@ -33,13 +39,14 @@ namespace Oxide.Plugins
             try
             {
                 config = Config.ReadObject<Configuration>() ?? Configuration.DefaultConfig();
+                ValidateConfig();
                 PopulateConfig();
                 SaveConfig();
             }
             catch (Exception ex)
             {
                 Debug.LogException(ex);
-                PrintWarning("Creating new configuration file.");
+                PrintWarning("Error loading configuration. Creating new configuration file.");
                 LoadDefaultConfig();
             }
         }
@@ -47,83 +54,141 @@ namespace Oxide.Plugins
         protected override void LoadDefaultConfig()
         {
             config = Configuration.DefaultConfig();
+
+            // Predefined blacklist items
+            config.Blacklist.AddRange(new List<string>
+            {
+                "wiretool",
+                "pipetool",
+                "hosetool",
+                "attackhelicopter",
+                "motorbike",
+                "motorbike_sidecar",
+                "bicycle",
+                "trike",
+                "kayak",
+                "rhib",
+                "rowboat",
+                "tugboat",
+                "minihelicopter.repair",
+                "mlrs",
+                "scraptransportheli.repair",
+                "snowmobile",
+                "snowmobiletomaha",
+                "submarineduo",
+                "submarinesolo",
+                "locomotive",
+                "wagon",
+                "workcart",
+                "rf_pager"
+            });
+
             SaveConfig();
         }
 
         protected override void SaveConfig()
         {
-            Config.WriteObject(config, true);
+            try
+            {
+                Config.WriteObject(config, true);
+                PrintToConsole("Configuration saved successfully.");
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Error saving configuration: {ex.Message}");
+            }
+        }
+
+        private void ValidateConfig()
+        {
+            if (config.Permissions == null)
+            {
+                config.Permissions = new Dictionary<string, string>();
+            }
+
+            if (config.Blacklist == null)
+            {
+                config.Blacklist = new List<string>();
+            }
         }
 
         private void PopulateConfig()
         {
             var newPermissions = new Dictionary<string, string>();
 
-            if (ItemManager.itemList != null)
+            try
             {
-                foreach (var itemDefinition in ItemManager.itemList)
+                if (ItemManager.itemList != null)
                 {
-                    if (IsInCategory(itemDefinition, ItemCategory.Construction) ||
-                        IsInCategory(itemDefinition, ItemCategory.Traps) ||
-                        IsInCategory(itemDefinition, ItemCategory.Items))
+                    foreach (var itemDefinition in ItemManager.itemList)
                     {
-                        // Use shortname for key and sanitized displayName for permission
-                        string shortName = itemDefinition.shortname;
-                        string prefabName = SanitizeDisplayName(itemDefinition.displayName?.english ?? shortName);
-
-                        string permissionName = $"canbuildthis.{prefabName}";
-
-                        // Use shortName as the key and permissionName as the value
-                        if (!newPermissions.ContainsKey(shortName))
+                        if (config.Blacklist.Contains(itemDefinition.shortname))
                         {
-                            newPermissions[shortName] = permissionName;
+                            continue;
+                        }
+
+                        if (IsDeployable(itemDefinition))
+                        {
+                            string shortName = itemDefinition.shortname;
+                            string prefabName = SanitizeDisplayName(itemDefinition.displayName?.english ?? shortName);
+                            string permissionName = $"canbuildthis.{prefabName}";
+
+                            if (!newPermissions.ContainsKey(shortName))
+                            {
+                                newPermissions[shortName] = permissionName;
+                                PrintToConsole($"Added permission for item '{shortName}' with permission '{permissionName}'.");
+                            }
                         }
                     }
+
+                    config.Permissions = newPermissions;
+                    SaveConfig();
+                    PrintToConsole("Config updated with deployable item permissions.");
                 }
-                config.Permissions = newPermissions;
-                SaveConfig();
-                PrintToConsole("Config updated with relevant item category permissions.");
+                else
+                {
+                    PrintWarning("ItemManager.itemList is null. Cannot populate config.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                PrintWarning("ItemManager.itemList is null. Cannot populate config.");
+                PrintWarning($"Error populating config: {ex.Message}");
             }
+        }
+
+        private bool IsDeployable(ItemDefinition itemDefinition)
+        {
+            // Adjust this to use the actual method or property that checks deployability
+            // This is a placeholder example; replace with the actual check if different
+            return itemDefinition.GetDeployable() != null;
         }
 
         private string SanitizeDisplayName(string displayName)
         {
-            if (string.IsNullOrEmpty(displayName))
-            {
-                return string.Empty;
-            }
-
-            // Replace spaces with underscores and convert to lowercase
-            return displayName.Replace(' ', '_').ToLower();
-        }
-
-        private bool IsInCategory(ItemDefinition itemDefinition, ItemCategory category)
-        {
-            return itemDefinition.category == category;
+            return string.IsNullOrEmpty(displayName) ? string.Empty : displayName.Replace(' ', '_').Replace('/', '_').ToLower();
         }
 
         #endregion
 
         #region Initialization
 
+        private Timer _initTimer;
+
         private void Init()
         {
-            timer.Once(1f, () =>
+            _initTimer = timer.Every(5f, () =>
             {
-                PrintToConsole("Init method called.");
-                if (ItemManager.itemList == null)
+                if (ItemManager.itemList != null)
                 {
-                    PrintWarning("ItemManager.itemList is still null. Initialization may be incomplete.");
-                    return;
+                    LoadConfig();
+                    RegisterPermissions();
+                    EnsureLanguageFiles();
+                    _initTimer?.Destroy();
                 }
-
-                LoadConfig();
-                RegisterPermissions();
-                EnsureLanguageFiles();
+                else
+                {
+                    PrintWarning("ItemManager.itemList is still null. Retrying...");
+                }
             });
         }
 
@@ -140,11 +205,15 @@ namespace Oxide.Plugins
                     permission.RegisterPermission(permissionName, this);
                     PrintToConsole($"Registered permission: {permissionName}");
                 }
-                else
-                {
-                    PrintToConsole($"Permission already exists: {permissionName}");
-                }
             }
+
+            // Register the ALL permission
+            if (!permission.PermissionExists(config.ALLPermission))
+            {
+                permission.RegisterPermission(config.ALLPermission, this);
+                PrintToConsole($"Registered permission: {config.ALLPermission}");
+            }
+
             PrintToConsole("Permissions registration complete.");
         }
 
@@ -156,40 +225,41 @@ namespace Oxide.Plugins
         {
             if (prefab == null || planner == null)
             {
-                PrintToConsole("CanBuild called with null prefab or planner.");
+                PrintWarning("Planner or prefab is null.");
                 return null;
             }
 
-            string prefabName = prefab.fullName;
-
             var player = planner.GetOwnerPlayer();
-            PrintToConsole($"CanBuild called for prefab: {prefabName} by player: {player?.displayName}");
+            if (player == null)
+            {
+                PrintWarning("Player is null.");
+                return null;
+            }
+
+            // Check for ALL permission first
+            if (permission.UserHasPermission(player.UserIDString, config.ALLPermission))
+            {
+                return null; // Player has permission to build anything
+            }
+
+            string prefabName = prefab.fullName;
 
             foreach (var kvp in config.Permissions)
             {
                 if (prefabName.Contains(kvp.Key))
                 {
-                    if (player == null)
-                    {
-                        PrintToConsole("Player not found.");
-                        return null;
-                    }
-
                     string permissionName = kvp.Value;
 
                     if (!permission.UserHasPermission(player.UserIDString, permissionName))
                     {
                         player.ChatMessage(lang.GetMessage("NoPermission", this, player.UserIDString));
-                        PrintToConsole($"Player {player.displayName} tried to build {prefabName} but lacks permission ({permissionName}).");
                         return false;
                     }
 
-                    PrintToConsole($"Player {player.displayName} has permission to build {prefabName} ({permissionName}).");
                     return null;
                 }
             }
 
-            PrintToConsole($"No permission entry found for {prefabName}. Building allowed by default.");
             return null;
         }
 
@@ -232,8 +302,12 @@ namespace Oxide.Plugins
                 try
                 {
                     string json = JsonConvert.SerializeObject(lang.Value, Formatting.Indented);
-                    File.WriteAllText(filePath, json);
-                    PrintToConsole($"Created/Updated language file: {filePath}");
+
+                    if (!File.Exists(filePath) || File.ReadAllText(filePath) != json)
+                    {
+                        File.WriteAllText(filePath, json);
+                        PrintToConsole($"Created/Updated language file: {filePath}");
+                    }
                 }
                 catch (Exception ex)
                 {
