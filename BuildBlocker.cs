@@ -183,7 +183,7 @@ namespace Oxide.Plugins
         //checking for common categories with deployables in them
         private bool IsDeployable(ItemDefinition itemDefinition)
         {
-            return itemDefinition.category == ItemCategory.Construction || itemDefinition.category == ItemCategory.Electrical || itemDefinition.category == ItemCategory.Fun || itemDefinition.category == ItemCategory.Items;
+            return itemDefinition.category == ItemCategory.Construction || itemDefinition.category == ItemCategory.Electrical || itemDefinition.category == ItemCategory.Fun || itemDefinition.category == ItemCategory.Items || itemDefinition.category == ItemCategory.Traps || itemDefinition.category == ItemCategory.Common || itemDefinition.category == ItemCategory.Misc;
         }
 
         //here I clean up the display names of the entities, so they can be used as easy to find permissions
@@ -232,7 +232,7 @@ namespace Oxide.Plugins
                 }
             }
 
-            Puts("Permissions registration complete.");
+            Puts("Permissions registration complete. Granted means disallowed placement");
         }
 
         #endregion
