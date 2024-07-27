@@ -1,5 +1,6 @@
 //Written so that permissions block placement of the specific deployable when granted. There are just too many permissions to grant for placement
 //If you want it to be permissions for placement, change the if permission.UserHasPermission to include ! after the bracket but before permission inside CanBuild
+//Will rewrite soon, I know its a bit long but it works as intended.
 using System;
 using System.Collections.Generic;
 using System.IO;
