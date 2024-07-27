@@ -1,3 +1,4 @@
+//Written so that permissions block placement of the spcific deployable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -27,6 +28,7 @@ namespace Oxide.Plugins
             }
         }
 
+        //We create the config template here, with only a permissions dictionary.
         protected override void LoadConfig()
         {
             base.LoadConfig();
@@ -45,6 +47,7 @@ namespace Oxide.Plugins
             }
         }
 
+        //Create an empty permissions template
         protected override void LoadDefaultConfig()
         {
             config = Configuration.DefaultConfig();
@@ -64,7 +67,8 @@ namespace Oxide.Plugins
                 PrintWarning($"Error saving configuration: {ex.Message}");
             }
         }
-
+        
+        //Ensure that the config is not broken before proceeding to use it.
         private void ValidateConfig()
         {
             if (config.Permissions == null)
@@ -73,7 +77,7 @@ namespace Oxide.Plugins
             }
         }
 
-        //Creating the permissions here and saving to config file
+        //Creating the permissions here from the specified categories, if the items are deployable.
         private void PopulateConfig()
         {
             if (ItemManager.itemList == null || ItemManager.itemList.Count == 0)
@@ -84,7 +88,7 @@ namespace Oxide.Plugins
 
             var newPermissions = new Dictionary<string, string>();
             bool hasNewPermissions = false;
-
+            //foreach loop to find the items to register permissions with
             foreach (var itemDefinition in ItemManager.itemList)
             {
                 if (IsBlacklisted(itemDefinition.shortname))
@@ -127,7 +131,8 @@ namespace Oxide.Plugins
                 Puts("No new permissions to add.");
             }
         }
-
+        
+        //Hardcoded blacklist. This is done to prevent the config becoming too cluttered.
         private bool IsBlacklisted(string shortName)
         {
             //Blacklisted Items (hardcoded to not clutter config)
@@ -238,7 +243,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Hooks
-
+        //Check if players have the blocking permission to prevent building.
         private object CanBuild(Planner planner, Construction prefab)
         {
             if (prefab == null || planner == null)
@@ -246,18 +251,18 @@ namespace Oxide.Plugins
                 PrintWarning("Planner or prefab is null.");
                 return null;
             }
-
+            //Getting player ID to check for permission.
             var player = planner.GetOwnerPlayer();
             if (player == null)
             {
-                PrintWarning("Player is null.");
+                Puts("Player is null.");
                 return null;
             }
 
-            // Get the prefab short name
+            //Get the prefab name to register the permission
             string prefabShortName = prefab.fullName;
 
-            // Check if the prefab is in the permissions dictionary
+            //Check if the entity is in the permissions dictionary
             foreach (var kvp in config.Permissions)
             {
                 if (prefabShortName.Contains(kvp.Key))
@@ -266,19 +271,16 @@ namespace Oxide.Plugins
 
                     if (permission.UserHasPermission(player.UserIDString, permissionName))
                     {
-                        // Notify the player of the lack of permission
+                        //Notify player they are not allowed to place this object(permission granted)
                         player.ChatMessage(lang.GetMessage("NotAllowed", this, player.UserIDString));
 
                         // Return false to prevent the build
                         return false;
                     }
-
-                    // Player has the required permission
                     return null;
                 }
             }
 
-            // If no specific permission is found for the prefab, allow the build
             return null;
         }
 
