@@ -99,7 +99,7 @@ namespace Oxide.Plugins
             }
             else
             {
-                Puts($"Player with ID {player.userID} not found or has no inventory.");
+                //Puts($"Player with ID {player.userID} not found or has no inventory.");
                 // Optionally handle dropping item if player is not found
                 item.Drop(arm.transform.position, Vector3.zero);
             }
