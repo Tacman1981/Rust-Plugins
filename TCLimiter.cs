@@ -86,10 +86,38 @@ namespace Oxide.Plugins
                     player.ChatMessage("You have placed no Tool Cupboards yet!");
                 }
             }
-            else
+        }
+
+        [ChatCommand("tclimit")]
+        void TCLimitCommand(BasePlayer player, string command, string[] args)
+        {
+            if (!player.IsAdmin)
             {
-                player.ChatMessage("Usage: /TC");
+                player.ChatMessage("You do not have permission to use this command.");
+                return;
             }
+
+            if (args.Length != 2 || !int.TryParse(args[1], out int newLimit) || newLimit < 1)
+            {
+                player.ChatMessage("Usage: /tclimit <permission> <new_limit>");
+                player.ChatMessage("Example: /tclimit tclimiter.default 5");
+                return;
+            }
+
+            string permission = args[0];
+            var permissionsConfig = Config.Get<Dictionary<string, object>>("Permissions");
+
+            if (!permissionsConfig.ContainsKey(permission))
+            {
+                player.ChatMessage($"No such permission: {permission}");
+                return;
+            }
+
+            permissionsConfig[permission] = newLimit;
+            Config.Set("Permissions", permissionsConfig);
+            SaveConfig();
+
+            player.ChatMessage($"Updated {permission} limit to {newLimit} tool cupboards.");
         }
 
         void LoadExistingCupboards()
@@ -157,7 +185,7 @@ namespace Oxide.Plugins
             int defaultMaxCupboards;
             if (!int.TryParse(Config.Get<string>("MaxCupboards"), out defaultMaxCupboards))
             {
-                defaultMaxCupboards = 3; // Set default value if config is not found or MaxCupboards is null
+                defaultMaxCupboards = 3; // Set default value if MaxCupboards is not valid or found
             }
 
             // Set the default value in the config (if not already set)
