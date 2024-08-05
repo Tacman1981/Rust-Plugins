@@ -39,8 +39,7 @@ namespace Oxide.Plugins
         {
             if (player == null || !player.IsConnected || player.inventory == null)
             {
-                // Drop item if player is not found or offline
-                item.Drop(arm.transform.position, Vector3.zero);
+            //Return here as there is no need to process offline or null players/inventories
                 return;
             }
 
