@@ -1,5 +1,3 @@
-//Needs a method rewriting to prevent server hang for unknown reason
-//Plugin to make excavator output go straight to the players inventory, tested with different resources and it works as it should. It announces player and resource when switching. Great for casual servers or fun with friends.
 using Oxide.Core;
 using Oxide.Core.Plugins;
 using UnityEngine;
@@ -7,9 +5,12 @@ using System.Collections.Generic;
 using Facepunch;
 using ConVar;
 
+/*
+Added player offline check to revert to default if the player logs out while excavator is running. This should remove the long hook time hopefully.
+*/
 namespace Oxide.Plugins
 {
-    [Info("Excavator Output", "Tacman", "1.0.0")]
+    [Info("Excavator Output", "Tacman", "1.1.0")]
     [Description("Plugin to manage resource distribution from Excavator output to player inventory.")]
     public class ExcavatorOutput : RustPlugin
     {
@@ -35,7 +36,7 @@ namespace Oxide.Plugins
 
         private void OutputPiles(ExcavatorArm arm, Item item, BasePlayer player)
         {
-            if (player != null && player.inventory != null)
+            if (player != null && player.IsConnected && player.inventory != null)
             {
                 bool itemMoved = false;
                 int remainingAmount = item.amount;
@@ -100,8 +101,8 @@ namespace Oxide.Plugins
             }
             else
             {
-                //Puts($"Player with ID {player.userID} not found or has no inventory.");
-                // Optionally handle dropping item if player is not found
+                //Puts($"Player with ID {player?.userID} not found or is offline. Dropping item at the excavator.");
+                // Drop item if player is not found or offline
                 item.Drop(arm.transform.position, Vector3.zero);
             }
         }
@@ -126,7 +127,7 @@ namespace Oxide.Plugins
             }
         }
 
-        //Informing player about the plugin
+        // Informing player about the plugin
         void OnPlayerConnected(BasePlayer player)
         {
             player.ChatMessage("Excavator Output: Output for excavator is your own inventory");
