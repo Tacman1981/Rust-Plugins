@@ -6,7 +6,7 @@ using Facepunch;
 using ConVar;
 
 /*
-Added player offline check to revert to default if the player logs out while excavator is running. This should remove the long hook time hopefully.
+V 1.1.0: Added player offline check to revert to default if the player logs out while excavator is running. This should remove the long hook time hopefully. It will start feeding inventory when they reconnect again.
 */
 namespace Oxide.Plugins
 {
