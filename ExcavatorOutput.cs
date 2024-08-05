@@ -1,3 +1,4 @@
+//Needs a method rewriting to prevent server hang for unknown reason
 //Plugin to make excavator output go straight to the players inventory, tested with different resources and it works as it should. It announces player and resource when switching. Great for casual servers or fun with friends.
 using Oxide.Core;
 using Oxide.Core.Plugins;
