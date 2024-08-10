@@ -39,7 +39,8 @@ namespace Oxide.Plugins
         {
             if (player == null || !player.IsConnected || player.inventory == null)
             {
-            //Return here as there is no need to process offline or null players/inventories
+                // Drop item if player is not found or offline
+                item.Drop(arm.transform.position, Vector3.zero);
                 return;
             }
 
@@ -114,7 +115,6 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    //use default behaviour if player logs out while excavator is still running.
                     return;
                 }
             }
@@ -126,9 +126,22 @@ namespace Oxide.Plugins
             player.ChatMessage("Excavator Output: Output for excavator is your own inventory");
         }
 
+        void OnPlayerDisconnected(BasePlayer player, string reason)
+        {
+            // Find all ExcavatorArm instances in the scene
+            foreach (var arm in UnityEngine.Object.FindObjectsOfType<ExcavatorArm>())
+            {
+                // Check if this excavator's player matches the disconnected player
+                if (excavatorPlayerMap.TryGetValue(arm, out ulong playerId) && playerId == player.userID)
+                {
+                    // Remove the excavator from the dictionary
+                    excavatorPlayerMap.Remove(arm);
+                }
+            }
+        }
+
         private void Unload()
         {
-            // Cleanup code if needed
             excavatorPlayerMap.Clear();
         }
     }
