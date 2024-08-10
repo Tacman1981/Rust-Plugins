@@ -77,48 +77,34 @@ namespace Oxide.Plugins
             }
         
             ItemContainer inventory = player.inventory.containerMain;
-            bool itemMoved = false;
             int remainingAmount = item.amount;
         
-            // Attempt to add to existing stacks
+            // Find the first slot with the same item type and stack into it
             foreach (Item slot in inventory.itemList)
             {
-                if (slot.info.itemid == item.info.itemid && slot.amount < slot.MaxStackable())
+                if (slot.info.itemid == item.info.itemid)
                 {
-                    int spaceAvailable = slot.MaxStackable() - slot.amount;
-                    int amountToAdd = Mathf.Min(remainingAmount, spaceAvailable);
-        
-                    slot.amount += amountToAdd;
+                    // Stack items into this slot, ignoring MaxStackable
+                    slot.amount += remainingAmount;
                     slot.MarkDirty();
-                    remainingAmount -= amountToAdd;
-        
-                    if (remainingAmount <= 0)
-                    {
-                        item.Remove();
-                        itemMoved = true;
-                        break;
-                    }
-                }
-            }
-        
-            // Attempt to create new stacks for the remaining items
-            while (!itemMoved && remainingAmount > 0)
-            {
-                Item newItem = ItemManager.CreateByItemID(item.info.itemid, remainingAmount);
-                bool moved = newItem.MoveToContainer(inventory);
-        
-                if (moved)
-                {
-                    remainingAmount -= newItem.amount;
-                }
-                else
-                {
+                    item.Remove();
                     return;
                 }
             }
         
-            if (remainingAmount <= 0)
+            // If no slot with the same item type is found, create a new item in an empty slot
+            if (remainingAmount > 0)
             {
+                Item newItem = ItemManager.CreateByItemID(item.info.itemid, remainingAmount);
+                bool moved = newItem.MoveToContainer(inventory);
+        
+                if (!moved)
+                {
+                    // If the item can't be moved to the inventory, exit the function without dropping it
+                    return;
+                }
+        
+                // Remove the original item after successfully adding it to inventory
                 item.Remove();
             }
         }
