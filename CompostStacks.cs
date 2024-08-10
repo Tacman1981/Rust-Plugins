@@ -3,10 +3,11 @@ using System.Linq;
 using UnityEngine;
 using Oxide.Plugins;
 using Oxide.Core.Libraries.Covalence;
+using Oxide.Core;
 
 namespace Oxide.Plugins
 {
-    [Info("Compost Stacks", "Tacman", "2.0.3")]
+    [Info("Compost Stacks", "Tacman", "2.0.4")]
     [Description("Toggle the CompostEntireStack boolean on load and for new Composter entities, which will compost entire stacks of all compostable items.")]
     public class CompostStacks : RustPlugin
     {
@@ -21,7 +22,15 @@ namespace Oxide.Plugins
             UpdateComposters();
         }
         
-       
+       private void OnPermissionRegistered(string name, CompostStacks owner)
+        {
+            if (permission != null && owner != null)
+            {
+                //Log permission registry to console, comment out this next line if you dont want this.
+                Puts($"{permissionName} has been registered {(owner != null ? $"for {owner.Title}" : "")}");
+            }
+        }
+
         private void OnEntitySpawned(BaseNetworkable entity)
         {
             if (entity is Composter composter)
@@ -58,11 +67,11 @@ namespace Oxide.Plugins
                 {
                     if (HasPermission(ownerPlayer))
                     {
-                        composter.CompostEntireStack = CompostEntireStack; // Set to true by default
+                        composter.CompostEntireStack = CompostEntireStack; //True if permission granted.
                     }
                     else
                     {
-                        composter.CompostEntireStack = false; // Disable for unauthorized owners
+                        composter.CompostEntireStack = false; //set to false if no permission
                     }
                 }
             }
@@ -70,7 +79,6 @@ namespace Oxide.Plugins
 
         private bool HasPermission(IPlayer player)
         {
-            // Check if the player has the required permission
             return player.HasPermission(permissionName);
         }
 
@@ -78,7 +86,8 @@ namespace Oxide.Plugins
         {
             if (permission == permissionName)
             {
-                timer.Once(1.0f, () => ReloadPlugin()); // Introduce a 1-second delay before reloading
+                Puts($"Permission {permissionName} granted to user {id}");
+                timer.Once(1.0f, () => ReloadPlugin());
             }
         }
         
@@ -86,7 +95,26 @@ namespace Oxide.Plugins
         {
             if (permission == permissionName)
             {
-                timer.Once(1.0f, () => ReloadPlugin()); // Introduce a 1-second delay before reloading
+                Puts($"Permission {permissionName} granted to user {id}");
+                timer.Once(1.0f, () => ReloadPlugin());
+            }
+        }
+
+        private void OnGroupPermissionGranted(string id, string permission)
+        {
+            if (permission == permissionName)
+            {
+                Puts($"Permission {permissionName} granted to group {id}");
+                timer.Once(1.0f, () => ReloadPlugin());
+            }
+        }
+        
+        private void OnGroupPermissionRevoked(string id, string permission)
+        {
+            if (permission == permissionName)
+            {
+                Puts($"Permission {permissionName} granted to group {id}");
+                timer.Once(1.0f, () => ReloadPlugin());
             }
         }
         
@@ -104,5 +132,5 @@ namespace Oxide.Plugins
         
             covalence.Server.Command(command);
         }
-            }
-        }
+    }
+}
