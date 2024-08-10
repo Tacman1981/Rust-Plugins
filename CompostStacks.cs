@@ -176,7 +176,7 @@ namespace Oxide.Plugins
         private void OnNewSave()
         {
             Interface.Oxide.DataFileSystem.WriteObject(dataFileName, new Dictionary<ulong, bool>());
-            Puts("New save detected. Clearing data file.");
+            Puts("Compost Stacks: New save detected. Clearing data file.");
         }
     }
 }
