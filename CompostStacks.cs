@@ -4,6 +4,7 @@ using UnityEngine;
 using Oxide.Plugins;
 using Oxide.Core.Libraries.Covalence;
 using Oxide.Core;
+using System.IO;
 
 namespace Oxide.Plugins
 {
@@ -14,64 +15,71 @@ namespace Oxide.Plugins
         private bool CompostEntireStack = true;
         private const string permissionName = "compoststacks.use"; // Permission name
 
-        private Dictionary<string, Dictionary<string, string>> allMessages = new Dictionary<string, Dictionary<string, string>>();
+        private Dictionary<ulong, bool> composterData = new Dictionary<ulong, bool>(); // Stores OwnerID and CompostEntireStack status
+        private const string dataFileName = "CompostStacksData";
 
         private void OnServerInitialized()
         {
             permission.RegisterPermission(permissionName, this);
-            UpdateComposters();
-        }
-        
-       private void OnPermissionRegistered(string name, CompostStacks owner)
-        {
-            if (permission != null && owner != null)
-            {
-                //Log permission registry to console, comment out this next line if you dont want this.
-                Puts($"{permissionName} has been registered {(owner != null ? $"for {owner.Title}" : "")}");
-            }
+            LoadData();
+            UpdateComposters(); // Update all composters based on loaded data
         }
 
         private void OnEntitySpawned(BaseNetworkable entity)
         {
             if (entity is Composter composter)
             {
-                if (composter == null) return;
-        
-                IPlayer ownerPlayer = covalence.Players.FindPlayerById(composter.OwnerID.ToString());
-        
+                ulong ownerID = composter.OwnerID;
+                IPlayer ownerPlayer = covalence.Players.FindPlayerById(ownerID.ToString());
+
                 if (ownerPlayer != null)
                 {
-                    if (HasPermission(ownerPlayer))
-                    {
-                        composter.CompostEntireStack = CompostEntireStack; // Set to true by default
-                    }
-                    else
-                    {
-                        composter.CompostEntireStack = false;
-                    }
+                    bool hasPermission = HasPermission(ownerPlayer);
+                    composter.CompostEntireStack = hasPermission ? CompostEntireStack : false;
+
+                    // Store the status in the dictionary
+                    composterData[ownerID] = composter.CompostEntireStack;
                 }
                 else
                 {
-                    Puts($"Owner player not found for OwnerID: {composter.OwnerID}");
+                    Puts($"Owner player not found for OwnerID: {ownerID}");
                 }
             }
         }
 
         private void UpdateComposters()
         {
-            foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter))
+            if (composterData != null && composterData.Count > 0)
             {
-                IPlayer ownerPlayer = covalence.Players.FindPlayerById(composter.OwnerID.ToString());
-
-                if (ownerPlayer != null)
+                // Update existing composters from the data file
+                foreach (var entry in composterData)
                 {
-                    if (HasPermission(ownerPlayer))
+                    IPlayer ownerPlayer = covalence.Players.FindPlayerById(entry.Key.ToString());
+
+                    if (ownerPlayer != null)
                     {
-                        composter.CompostEntireStack = CompostEntireStack; //True if permission granted.
+                        foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter && ((Composter)x).OwnerID == entry.Key))
+                        {
+                            composter.CompostEntireStack = entry.Value;
+                        }
                     }
-                    else
+                }
+            }
+            else
+            {
+                // Fallback: Iterate through all composters if data is not loaded
+                foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter))
+                {
+                    ulong ownerID = composter.OwnerID;
+                    IPlayer ownerPlayer = covalence.Players.FindPlayerById(ownerID.ToString());
+
+                    if (ownerPlayer != null)
                     {
-                        composter.CompostEntireStack = false; //set to false if no permission
+                        bool hasPermission = HasPermission(ownerPlayer);
+                        composter.CompostEntireStack = hasPermission ? CompostEntireStack : false;
+
+                        // Store the status in the dictionary
+                        composterData[ownerID] = composter.CompostEntireStack;
                     }
                 }
             }
@@ -82,21 +90,36 @@ namespace Oxide.Plugins
             return player.HasPermission(permissionName);
         }
 
+        private void LoadData()
+        {
+            composterData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, bool>>(dataFileName) ?? new Dictionary<ulong, bool>();
+        }
+
+        private void SaveData()
+        {
+            Interface.Oxide.DataFileSystem.WriteObject(dataFileName, composterData);
+        }
+
+        private void Unload()
+        {
+            SaveData(); // Save data when plugin unloads
+        }
+
         private void OnUserPermissionGranted(string id, string permission)
         {
             if (permission == permissionName)
             {
                 Puts($"Permission {permissionName} granted to user {id}");
-                timer.Once(1.0f, () => ReloadPlugin());
+                UpdateCompostersForUser(id); // Update composters instead of reloading the plugin
             }
         }
-        
+
         private void OnUserPermissionRevoked(string id, string permission)
         {
             if (permission == permissionName)
             {
-                Puts($"Permission {permissionName} granted to user {id}");
-                timer.Once(1.0f, () => ReloadPlugin());
+                Puts($"Permission {permissionName} revoked for user {id}");
+                UpdateCompostersForUser(id); // Update composters instead of reloading the plugin
             }
         }
 
@@ -105,32 +128,55 @@ namespace Oxide.Plugins
             if (permission == permissionName)
             {
                 Puts($"Permission {permissionName} granted to group {id}");
-                timer.Once(1.0f, () => ReloadPlugin());
+                UpdateCompostersForGroup(id); // Update composters for the group
             }
         }
-        
+
         private void OnGroupPermissionRevoked(string id, string permission)
         {
             if (permission == permissionName)
             {
-                Puts($"Permission {permissionName} granted to group {id}");
-                timer.Once(1.0f, () => ReloadPlugin());
+                Puts($"Permission {permissionName} revoked for group {id}");
+                UpdateCompostersForGroup(id); // Update composters for the group
+            }
+        }
+
+        private void UpdateCompostersForUser(string userId)
+        {
+            ulong ownerID = ulong.Parse(userId);
+            IPlayer ownerPlayer = covalence.Players.FindPlayerById(userId);
+
+            if (ownerPlayer != null)
+            {
+                bool hasPermission = HasPermission(ownerPlayer);
+                foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter && ((Composter)x).OwnerID == ownerID))
+                {
+                    composter.CompostEntireStack = hasPermission ? CompostEntireStack : false;
+                    composterData[ownerID] = composter.CompostEntireStack;
+                    UpdateComposters();
+                }
+
+                SaveData(); // Save the updated data
+            }
+        }
+
+        private void UpdateCompostersForGroup(string groupId)
+        {
+            // Iterate over all connected players
+            foreach (IPlayer player in covalence.Players.Connected)
+            {
+                // Check if the player has the permission directly or via the group
+                if (player.HasPermission(permissionName) || permission.UserHasGroup(player.Id, groupId))
+                {
+                    UpdateCompostersForUser(player.Id);
+                }
             }
         }
         
-        private void ReloadPlugin()
+        private void OnNewSave()
         {
-            #if RUST
-            SendConsoleCommand("o.reload CompostStacks");
-            #endif
-        }
-        
-        private void SendConsoleCommand(string command)
-        {
-            if (string.IsNullOrEmpty(command))
-                return;
-        
-            covalence.Server.Command(command);
+            Interface.Oxide.DataFileSystem.WriteObject(dataFileName, new Dictionary<ulong, bool>());
+            Puts("New save detected. Clearing data file.");
         }
     }
 }
