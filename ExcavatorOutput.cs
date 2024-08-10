@@ -72,7 +72,7 @@ namespace Oxide.Plugins
         {
             if (player == null || player.inventory == null)
             {
-                item.Drop(arm.transform.position, Vector3.zero);
+            //Returning early here if no player id or inventory slot is available.
                 return;
             }
         
@@ -100,11 +100,11 @@ namespace Oxide.Plugins
         
                 if (!moved)
                 {
-                    // If the item can't be moved to the inventory, exit the function without dropping it
+                    //If the item can't be moved to the inventory, return normal behaviour
                     return;
                 }
         
-                // Remove the original item after successfully adding it to inventory
+                //Remove the original item after successfully adding it to inventory
                 item.Remove();
             }
         }
