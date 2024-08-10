@@ -6,12 +6,13 @@ using Facepunch;
 using ConVar;
 
 /*
+V 1.3.0: Remove player from dictionary when they disconnect, hopefully fixing the process hanging.
 V 1.2.0: Removed else from outputpiles returning early if conditions dont match, this should help with offline check and return default behaviour instead of processing custom code.
 V 1.1.0: Added player offline check to revert to default if the player logs out while excavator is running. This should remove the long hook time hopefully. It will start feeding inventory when they reconnect again.
 */
 namespace Oxide.Plugins
 {
-    [Info("Excavator Output", "Tacman", "1.2.0")]
+    [Info("Excavator Output", "Tacman", "1.3.0")]
     [Description("Plugin to manage resource distribution from Excavator output to player inventory.")]
     public class ExcavatorOutput : RustPlugin
     {
