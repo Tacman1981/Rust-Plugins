@@ -40,30 +40,60 @@ namespace Oxide.Plugins
             }
         }
 
+        private void OnExcavatorGather(BaseEntity excavator, Item item)
+        {
+            if (excavator is ExcavatorArm arm)
+            {
+                if (excavatorPlayerMap.TryGetValue(arm, out ulong playerId))
+                {
+                    BasePlayer player = BasePlayer.FindByID(playerId);
+        
+                    if (player == null || !player.IsConnected)
+                    {
+                        // Drop item if the player is not connected
+                        item.Drop(arm.transform.position, Vector3.zero);
+                        return;
+                    }
+        
+                    // Cache player's inventory
+                    ItemContainer playerInventory = player.inventory.containerMain;
+        
+                    if (playerInventory == null)
+                    {
+                        // Drop item if the player's inventory is unavailable
+                        item.Drop(arm.transform.position, Vector3.zero);
+                        return;
+                    }
+        
+                    OutputPiles(arm, item, player);
+                }
+            }
+        }
+        
         private void OutputPiles(ExcavatorArm arm, Item item, BasePlayer player)
         {
-            if (player == null || !player.IsConnected || player.inventory == null)
+            if (player == null || player.inventory == null)
             {
-                // Drop item if player is not found or offline
                 item.Drop(arm.transform.position, Vector3.zero);
                 return;
             }
-
+        
+            ItemContainer inventory = player.inventory.containerMain;
             bool itemMoved = false;
             int remainingAmount = item.amount;
-
+        
             // Attempt to add to existing stacks
-            foreach (Item slot in player.inventory.containerMain.itemList)
+            foreach (Item slot in inventory.itemList)
             {
                 if (slot.info.itemid == item.info.itemid && slot.amount < slot.MaxStackable())
                 {
                     int spaceAvailable = slot.MaxStackable() - slot.amount;
                     int amountToAdd = Mathf.Min(remainingAmount, spaceAvailable);
-
+        
                     slot.amount += amountToAdd;
                     slot.MarkDirty();
                     remainingAmount -= amountToAdd;
-
+        
                     if (remainingAmount <= 0)
                     {
                         item.Remove();
@@ -72,56 +102,29 @@ namespace Oxide.Plugins
                     }
                 }
             }
-
+        
             // Attempt to create new stacks for the remaining items
             while (!itemMoved && remainingAmount > 0)
             {
                 Item newItem = ItemManager.CreateByItemID(item.info.itemid, remainingAmount);
-                bool moved = newItem.MoveToContainer(player.inventory.containerMain);
-
+                bool moved = newItem.MoveToContainer(inventory);
+        
                 if (moved)
                 {
                     remainingAmount -= newItem.amount;
                 }
                 else
                 {
-                    if (player.inventory.containerMain.IsFull())
-                    {
-                        // Drop item at the player's position if the inventory is full
-                        newItem.Drop(player.transform.position, Vector3.zero);
-                    }
-                    else
-                    {
-                        Puts($"Failed to move new item {newItem.info.displayName.english} to {player.displayName}'s inventory. This might indicate an issue with the item or container.");
-                    }
-
+                    // Drop item at the player's position if the inventory is full or failed to move
+                    newItem.Drop(player.transform.position, Vector3.zero);
                     remainingAmount -= newItem.amount;
                     break;
                 }
             }
-
-            // Remove the original item if it has been fully processed
+        
             if (remainingAmount <= 0)
             {
                 item.Remove();
-            }
-        }
-
-        private void OnExcavatorGather(BaseEntity excavator, Item item)
-        {
-            if (excavator is ExcavatorArm arm)
-            {
-                // Check if we have a player associated with this excavator
-                if (excavatorPlayerMap.TryGetValue(arm, out ulong playerId))
-                {
-                    BasePlayer player = BasePlayer.FindByID(playerId);
-
-                    OutputPiles(arm, item, player);
-                }
-                else
-                {
-                    return;
-                }
             }
         }
 
