@@ -50,8 +50,7 @@ namespace Oxide.Plugins
         
                     if (player == null || !player.IsConnected)
                     {
-                        // Drop item if the player is not connected
-                        item.Drop(arm.transform.position, Vector3.zero);
+                        //If player is no longer connected, do nothing.
                         return;
                     }
         
@@ -60,8 +59,7 @@ namespace Oxide.Plugins
         
                     if (playerInventory == null)
                     {
-                        // Drop item if the player's inventory is unavailable
-                        item.Drop(arm.transform.position, Vector3.zero);
+                        //If playerInventory is null, usually offline or events, we return to default behaviour.
                         return;
                     }
         
@@ -115,10 +113,7 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    // Drop item at the player's position if the inventory is full or failed to move
-                    newItem.Drop(player.transform.position, Vector3.zero);
-                    remainingAmount -= newItem.amount;
-                    break;
+                    return;
                 }
             }
         
