@@ -4,15 +4,17 @@ using UnityEngine;
 using System.Collections.Generic;
 using Facepunch;
 using ConVar;
+using System.Linq;
 
 /*
+V 1.4.0: Changed OnPlayerDisconnected to use linq instead of unity FindObjectsOfType<>
 V 1.3.0: Remove player from dictionary when they disconnect, hopefully fixing the process hanging.
 V 1.2.0: Removed else from outputpiles returning early if conditions dont match, this should help with offline check and return default behaviour instead of processing custom code.
 V 1.1.0: Added player offline check to revert to default if the player logs out while excavator is running. This should remove the long hook time hopefully. It will start feeding inventory when they reconnect again.
 */
 namespace Oxide.Plugins
 {
-    [Info("Excavator Output", "Tacman", "1.3.0")]
+    [Info("Excavator Output", "Tacman", "1.4.0")]
     [Description("Plugin to manage resource distribution from Excavator output to player inventory.")]
     public class ExcavatorOutput : RustPlugin
     {
@@ -129,15 +131,16 @@ namespace Oxide.Plugins
 
         void OnPlayerDisconnected(BasePlayer player, string reason)
         {
-            // Find all ExcavatorArm instances in the scene
-            foreach (var arm in UnityEngine.Object.FindObjectsOfType<ExcavatorArm>())
+            // Create a list of ExcavatorArm instances to remove
+            var armsToRemove = excavatorPlayerMap
+                .Where(kvp => kvp.Value == player.userID)
+                .Select(kvp => kvp.Key)
+                .ToList();
+        
+            // Remove each ExcavatorArm from the dictionary and the scene
+            foreach (var arm in armsToRemove)
             {
-                // Check if this excavator's player matches the disconnected player
-                if (excavatorPlayerMap.TryGetValue(arm, out ulong playerId) && playerId == player.userID)
-                {
-                    // Remove the excavator from the dictionary
-                    excavatorPlayerMap.Remove(arm);
-                }
+                excavatorPlayerMap.Remove(arm);
             }
         }
 
