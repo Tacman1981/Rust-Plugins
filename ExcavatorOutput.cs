@@ -31,7 +31,7 @@ namespace Oxide.Plugins
             {
                 // Store the excavator for the player
                 excavatorPlayerMap[arm] = player.userID;
-
+                Puts($"Excavator started by {player.displayName}"); //Added this to log if player disconnecting is the cause of server hang.
                 Chat.Broadcast($"{player.displayName} has set the excavator to {resourceType}.");
             }
         }
