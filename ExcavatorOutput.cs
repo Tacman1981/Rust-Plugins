@@ -1,5 +1,5 @@
 //Still causing process hangs onexcavatorgather at random
-
+//If this does manage to be fixed, it will go into the private section.
 using Oxide.Core;
 using Oxide.Core.Plugins;
 using UnityEngine;
