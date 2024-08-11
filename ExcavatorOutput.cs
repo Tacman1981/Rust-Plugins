@@ -48,18 +48,9 @@ namespace Oxide.Plugins
                 {
                     BasePlayer player = BasePlayer.FindByID(playerId);
         
-                    if (player == null || !player.IsConnected)
+                    if (player == null)
                     {
                         //If player is no longer connected, do nothing.
-                        return;
-                    }
-        
-                    // Cache player's inventory
-                    ItemContainer playerInventory = player.inventory.containerMain;
-        
-                    if (playerInventory == null)
-                    {
-                        //If playerInventory is null, usually offline or events, we return to default behaviour.
                         return;
                     }
         
