@@ -48,20 +48,18 @@ namespace Oxide.Plugins
                 {
                     BasePlayer player = BasePlayer.FindByID(playerId);
         
-                    if (player == null)
+                    if (player != null)
                     {
-                        //If player is no longer connected, do nothing.
-                        return;
+                        OutputPiles(arm, item, player);
                     }
-        
-                    OutputPiles(arm, item, player);
+                    return;
                 }
             }
         }
         
         private void OutputPiles(ExcavatorArm arm, Item item, BasePlayer player)
         {
-            if (player == null || player.inventory == null)
+            if (player.inventory == null)
             {
             //Returning early here if no player id or inventory slot is available.
                 return;
