@@ -1,12 +1,12 @@
-﻿using Oxide.Core;
+using Oxide.Core;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-        [Info("Command To Invite", "Tacman", "1.5.0")]
-        [Description("Allows players to send team invites to other players")]
+    [Info("Command To Invite", "Tacman", "1.5.0")]
+    [Description("Allows players to send team invites to other players")]
     class CommandToInvite : RustPlugin
     {
         private void SendInvite(BasePlayer sender, BasePlayer target)
@@ -43,7 +43,7 @@ namespace Oxide.Plugins
             }
             //Check if player is inviting self
             if (target == sender)
-                {
+            {
                 sender.ChatMessage("You can not invite yourself to team");
             }
             //Check if player is already in inviting team
@@ -104,4 +104,3 @@ namespace Oxide.Plugins
         }
     }
 }
-
