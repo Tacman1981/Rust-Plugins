@@ -71,8 +71,7 @@ namespace Oxide.Plugins
             // If no slot with the same item type is found, create a new item in an empty slot
             if (remainingAmount > 0)
             {
-                Item newItem = ItemManager.CreateByItemID(item.info.itemid, remainingAmount);
-                bool moved = newItem.MoveToContainer(inventory);
+                bool moved = Item.MoveToContainer(inventory);
         
                 if (!moved)
                 {
