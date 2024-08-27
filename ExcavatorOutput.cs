@@ -68,19 +68,6 @@ namespace Oxide.Plugins
             ItemContainer inventory = player.inventory.containerMain;
             int remainingAmount = item.amount;
         
-            // Find the first slot with the same item type and stack into it
-            foreach (Item slot in inventory.itemList)
-            {
-                if (slot.info.itemid == item.info.itemid)
-                {
-                    // Stack items into this slot, ignoring MaxStackable
-                    slot.amount += remainingAmount;
-                    slot.MarkDirty();
-                    item.Remove();
-                    return;
-                }
-            }
-        
             // If no slot with the same item type is found, create a new item in an empty slot
             if (remainingAmount > 0)
             {
