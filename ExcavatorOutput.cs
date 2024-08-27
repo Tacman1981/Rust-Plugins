@@ -78,9 +78,6 @@ namespace Oxide.Plugins
                     //If the item can't be moved to the inventory, return normal behaviour
                     return;
                 }
-        
-                //Remove the original item after successfully adding it to inventory
-                item.Remove();
             }
         }
 
