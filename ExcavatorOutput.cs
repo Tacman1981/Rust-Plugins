@@ -64,15 +64,16 @@ namespace Oxide.Plugins
             //Returning early here if no player id or inventory slot is available.
                 return;
             }
-        
+
             ItemContainer inventory = player.inventory.containerMain;
             int remainingAmount = item.amount;
-        
+            
             // If no slot with the same item type is found, create a new item in an empty slot
             if (remainingAmount > 0)
             {
-                bool moved = Item.MoveToContainer(inventory);
-        
+                Item newItem = ItemManager.CreateByItemID(item.info.itemid, remainingAmount);
+                bool moved = newItem.MoveToContainer(inventory);
+
                 if (!moved)
                 {
                     //If the item can't be moved to the inventory, return normal behaviour
