@@ -1,120 +1,75 @@
-using Oxide.Core;
-using Oxide.Core.Plugins;
-using UnityEngine;
-using System.Collections.Generic;
-using Facepunch;
-using ConVar;
-using System.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using Oxide.Core;
 
-/*
-V 1.5.0: Received a little help from a friend on this bug fix, removed the foreach loop also removed item.remove since we use inventory.moveitem
-V 1.4.0: Changed OnPlayerDisconnected to use linq instead of unity FindObjectsOfType<>
-V 1.3.0: Remove player from dictionary when they disconnect, hopefully fixing the process hanging.
-V 1.2.0: Removed else from outputpiles returning early if conditions dont match, this should help with offline check and return default behaviour instead of processing custom code.
-V 1.1.0: Added player offline check to revert to default if the player logs out while excavator is running. This should remove the long hook time hopefully. It will start feeding inventory when they reconnect again.
-*/
 namespace Oxide.Plugins
 {
-    [Info("Excavator Output", "Tacman", "1.5.0")]
-    [Description("Plugin to manage resource distribution from Excavator output to player inventory.")]
-    public class ExcavatorOutput : RustPlugin
+    [Info("Connect Logger", "Tacman", "1.4.0")]
+    class ConnectLogger : RustPlugin
     {
-        // Dictionary to map excavator instances to player IDs
-        private Dictionary<ExcavatorArm, ulong> excavatorPlayerMap = new Dictionary<ExcavatorArm, ulong>();
+        private string logFilePath;
 
         private void Init()
         {
-            Subscribe(nameof(OnExcavatorResourceSet));
-            Subscribe(nameof(OnExcavatorGather));
+            logFilePath = Path.Combine(Interface.Oxide.LogDirectory, "ConnectLogs.txt");
         }
 
-        private void OnExcavatorResourceSet(BaseEntity excavator, string resourceType, BasePlayer player)
+        private void OnPlayerConnected(BasePlayer player)
         {
-            if (excavator is ExcavatorArm arm)
+            // Log player connection with timestamp and user ID
+            string logMessage = $"[{DateTime.Now}] [CONNECT] {player.displayName} ({player.UserIDString}) connected.";
+            LogToFile(logFilePath, logMessage, true);
+        }
+
+        private void OnPlayerDisconnected(BasePlayer player, string reason)
+        {
+            // If the disconnection reason is not provided, log it with a default reason
+            if (string.IsNullOrEmpty(reason))
             {
-                // Store the excavator for the player
-                excavatorPlayerMap[arm] = player.userID;
-
-                // Log the event with detailed information
-                string logMessage = $"[{DateTime.Now}] [EXCAVATOR] {player.displayName} ({player.UserIDString}) set the excavator to {resourceType}.";
-                LogToFile(Path.Combine(Interface.Oxide.LogDirectory, "ExcavatorLogs"), logMessage, this, true);
-
-                // Print a message to the console for debugging purposes
-                Puts($"Excavator started by {player.displayName}. [This is here so we can track if the player disconnecting causes hanging]");
-
-                // Broadcast the event to all players
-                Chat.Broadcast($"{player.displayName} has set the excavator to {resourceType}.");
+                reason = "Disconnected (No reason given)";
             }
+
+            // Log player disconnection with timestamp
+            string logMessage = $"[{DateTime.Now}] [DISCONNECT] {player.displayName} ({player.UserIDString}) disconnected. Reason: {reason}";
+            LogToFile(logFilePath, logMessage, true);
         }
 
-        private void OnExcavatorGather(BaseEntity excavator, Item item)
+        private void LogToFile(string filePath, string message, bool reverseOrder)
         {
-            if (excavator is ExcavatorArm arm)
+            if (reverseOrder)
             {
-                if (excavatorPlayerMap.TryGetValue(arm, out ulong playerId))
+                // Reverse the log order and append the new log message
+                List<string> logLines = new List<string>();
+
+                if (File.Exists(filePath))
                 {
-                    BasePlayer player = BasePlayer.FindByID(playerId);
-        
-                    if (player != null)
-                    {
-                        OutputPiles(arm, item, player);
-                    }
-                    return;
+                    string[] existingLogContent = File.ReadAllLines(filePath);
+                    logLines.AddRange(existingLogContent);
                 }
-            }
-        }
-        
-        private void OutputPiles(ExcavatorArm arm, Item item, BasePlayer player)
-        {
-            if (player == null)
-            {
-            //Returning early here if no player id or inventory slot is available.
-                return;
-            }
 
-            ItemContainer inventory = player.inventory.containerMain;
-            int remainingAmount = item.amount;
-            
-            // If no slot with the same item type is found, create a new item in an empty slot
-            if (remainingAmount > 0)
-            {
-                Item newItem = ItemManager.CreateByItemID(item.info.itemid, remainingAmount);
-                bool moved = newItem.MoveToContainer(inventory);
+                logLines.Insert(0, message);
 
-                if (!moved)
+                // Write the updated log content back to the file
+                File.WriteAllLines(filePath, logLines);
+            }
+            else
+            {
+                // Append the new log message at the end of the log file
+                using (StreamWriter streamWriter = new StreamWriter(filePath, true))
                 {
-                    //If the item can't be moved to the inventory, return normal behaviour
-                    return;
+                    streamWriter.WriteLine(message);
                 }
             }
         }
 
-        // Informing player about the plugin
-        void OnPlayerConnected(BasePlayer player)
+        private void OnNewSave(string filename)
         {
-            player.ChatMessage("Excavator Output: Output for excavator is your own inventory");
-        }
-
-        void OnPlayerDisconnected(BasePlayer player, string reason)
-        {
-            // Create a list of ExcavatorArm instances to remove
-            var armsToRemove = excavatorPlayerMap
-                .Where(kvp => kvp.Value == player.userID)
-                .Select(kvp => kvp.Key)
-                .ToList();
-        
-            // Remove each ExcavatorArm from the dictionary and the scene
-            foreach (var arm in armsToRemove)
+            // Delete the log file on a new server save (wipe)
+            if (File.Exists(logFilePath))
             {
-                excavatorPlayerMap.Remove(arm);
+                File.Delete(logFilePath);
             }
-        }
-
-        private void Unload()
-        {
-            excavatorPlayerMap.Clear();
         }
     }
 }
