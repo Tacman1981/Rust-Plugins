@@ -56,12 +56,6 @@ namespace Oxide.Plugins
         {
             int currentScrap = player.inventory.GetAmount(-932201673); // Current scrap in inventory
 
-            if (command.ToLower() != learnCommand)
-            {
-                // Ignore the command if it doesn't match the configured command
-                return;
-            }
-
             if (currentScrap >= scrapCost)
             {
                 player.inventory.Take(null, -932201673, scrapCost); // Deduct scrap from inventory
