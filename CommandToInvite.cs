@@ -1,6 +1,8 @@
 using Oxide.Core;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Oxide.Plugins
@@ -104,3 +106,4 @@ namespace Oxide.Plugins
         }
     }
 }
+
