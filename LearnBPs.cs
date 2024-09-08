@@ -1,59 +1,33 @@
 using Oxide.Core;
-using Oxide.Core.Configuration;
 using Oxide.Core.Plugins;
-using System;
 
 namespace Oxide.Plugins
 {
     [Info("Learn BPs Command", "Tacman", "1.0.0")]
-    [Description("Adds a command to learn all blueprints with a configurable scrap cost.")]
-
+    [Description("Adds a command to learn all blueprints with a scrap cost.")]
     class LearnBPs : RustPlugin
     {
-        private int scrapCost;
-        private string learnCommand;
+        private int scrapCost = 1; // Adjusted scrap cost
+        private const string permissionName = "learnbps.use"; // Permission name
 
-        private int configVersion = 1; // Current configuration version
-
-        protected override void LoadDefaultConfig()
+        void Init()
         {
-            Config["ConfigVersion"] = configVersion;
-            Config["ScrapCost"] = 25000; // Default scrap cost
-            Config["LearnCommand"] = "learnbps"; // Default command name
-            SaveConfig();
+            // Register permission
+            permission.RegisterPermission(permissionName, this);
+
+            // Register command
+            AddCommand("bps", "cmdLearnBPs");
         }
 
-        private void Init()
+        [ChatCommand("bps")]
+        private void cmdLearnBPs(BasePlayer player, string command, string[] args)
         {
-            LoadConfigData();
-            CheckConfigVersion();
-        }
-
-        private void LoadConfigData()
-        {
-            scrapCost = Convert.ToInt32(Config["ScrapCost"]);
-            learnCommand = Config["LearnCommand"].ToString().ToLower(); // Command name in lowercase
-        }
-
-        private void CheckConfigVersion()
-        {
-            int loadedConfigVersion = Convert.ToInt32(Config["ConfigVersion"]);
-
-            if (loadedConfigVersion < configVersion)
+            if (!permission.UserHasPermission(player.UserIDString, permissionName))
             {
-                // Handle configuration update logic here
-                Puts("Updating configuration...");
-
-                // Update configuration values
-
-                Config["ConfigVersion"] = configVersion;
-                SaveConfig();
+                SendReply(player, "unknown command: bps");
+                return;
             }
-        }
 
-        [ChatCommand("learnbps")]
-        private void LearnBPsCommand(BasePlayer player, string command, string[] args)
-        {
             int currentScrap = player.inventory.GetAmount(-932201673); // Current scrap in inventory
 
             if (currentScrap >= scrapCost)
@@ -68,5 +42,8 @@ namespace Oxide.Plugins
                 SendReply(player, $"You do not have enough scrap to learn all blueprints. You are short by {scrapShort} scrap.");
             }
         }
+
+        private void AddCommand(string command, string callback) =>
+            cmd.AddChatCommand(command, this, callback);
     }
 }
