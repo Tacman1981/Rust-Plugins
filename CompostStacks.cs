@@ -8,7 +8,7 @@ using System.IO;
 
 namespace Oxide.Plugins
 {
-    [Info("Compost Stacks", "Tacman", "2.0.4")]
+    [Info("Compost Stacks", "Tacman", "2.1.0")]
     [Description("Toggle the CompostEntireStack boolean on load and for new Composter entities, which will compost entire stacks of all compostable items.")]
     public class CompostStacks : RustPlugin
     {
@@ -21,7 +21,6 @@ namespace Oxide.Plugins
         private void OnServerInitialized()
         {
             permission.RegisterPermission(permissionName, this);
-            LoadData();
             UpdateComposters(); // Update all composters based on loaded data
         }
 
@@ -85,32 +84,12 @@ namespace Oxide.Plugins
             }
         }
 
-        private bool HasPermission(IPlayer player)
-        {
-            return player.HasPermission(permissionName);
-        }
-
-        private void LoadData()
-        {
-            composterData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, bool>>(dataFileName) ?? new Dictionary<ulong, bool>();
-        }
-
-        private void SaveData()
-        {
-            Interface.Oxide.DataFileSystem.WriteObject(dataFileName, composterData);
-        }
-
-        private void Unload()
-        {
-            SaveData(); // Save data when plugin unloads
-        }
-
         private void OnUserPermissionGranted(string id, string permission)
         {
             if (permission == permissionName)
             {
                 Puts($"Permission {permissionName} granted to user {id}");
-                UpdateCompostersForUser(id); // Update composters instead of reloading the plugin
+                UpdateComposters();
             }
         }
 
@@ -119,7 +98,7 @@ namespace Oxide.Plugins
             if (permission == permissionName)
             {
                 Puts($"Permission {permissionName} revoked for user {id}");
-                UpdateCompostersForUser(id); // Update composters instead of reloading the plugin
+                UpdateComposters();
             }
         }
 
@@ -128,7 +107,7 @@ namespace Oxide.Plugins
             if (permission == permissionName)
             {
                 Puts($"Permission {permissionName} granted to group {id}");
-                UpdateCompostersForGroup(id); // Update composters for the group
+                UpdateComposters();
             }
         }
 
@@ -137,46 +116,13 @@ namespace Oxide.Plugins
             if (permission == permissionName)
             {
                 Puts($"Permission {permissionName} revoked for group {id}");
-                UpdateCompostersForGroup(id); // Update composters for the group
-            }
-        }
-
-        private void UpdateCompostersForUser(string userId)
-        {
-            ulong ownerID = ulong.Parse(userId);
-            IPlayer ownerPlayer = covalence.Players.FindPlayerById(userId);
-
-            if (ownerPlayer != null)
-            {
-                bool hasPermission = HasPermission(ownerPlayer);
-                foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter && ((Composter)x).OwnerID == ownerID))
-                {
-                    composter.CompostEntireStack = hasPermission ? CompostEntireStack : false;
-                    composterData[ownerID] = composter.CompostEntireStack;
-                    UpdateComposters();
-                }
-
-                SaveData(); // Save the updated data
-            }
-        }
-
-        private void UpdateCompostersForGroup(string groupId)
-        {
-            // Iterate over all connected players
-            foreach (IPlayer player in covalence.Players.Connected)
-            {
-                // Check if the player has the permission directly or via the group
-                if (player.HasPermission(permissionName) || permission.UserHasGroup(player.Id, groupId))
-                {
-                    UpdateCompostersForUser(player.Id);
-                }
+                UpdateComposters();
             }
         }
         
-        private void OnNewSave()
+        private bool HasPermission(IPlayer player)
         {
-            Interface.Oxide.DataFileSystem.WriteObject(dataFileName, new Dictionary<ulong, bool>());
-            Puts("Compost Stacks: New save detected. Clearing data file.");
+            return player.HasPermission(permissionName);
         }
     }
 }
