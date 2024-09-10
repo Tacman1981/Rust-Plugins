@@ -43,7 +43,7 @@ namespace Oxide.Plugins
             }
             if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate" && entity.ShortPrefabName != "supply_drop")) return;
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
-            buoyancy.buoyancyScale = 3f;
+            buoyancy.buoyancyScale = 1f;
             buoyancy.detectionRate = _config.DetectionRate;
         }
         #endregion
