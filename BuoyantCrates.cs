@@ -1,10 +1,11 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Rust;
 using System;
+using Oxide.Core;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "1.5.1")]
+    [Info("Buoyant Crates", "Tacman", "1.6.0")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
@@ -35,6 +36,11 @@ namespace Oxide.Plugins
 
         void OnEntitySpawned(BaseEntity entity)
         {
+            var isShipwreckEvent = Interface.CallHook("OnShipwreckStart");
+            if (isShipwreckEvent != null)
+            {
+                return;
+            }
             if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate" && entity.ShortPrefabName != "supply_drop")) return;
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
             buoyancy.buoyancyScale = 3f;
@@ -53,8 +59,13 @@ namespace Oxide.Plugins
             void Awake()
             {
                 _entity = GetComponent<BaseEntity>();
+                if (_entity == null)
+                {
+                    Destroy(this);
+                    return;
+                }
+            
                 _supplyDrop = _entity as SupplyDrop;
-                if (_entity == null) Destroy(this);
             }
 
             void FixedUpdate()
