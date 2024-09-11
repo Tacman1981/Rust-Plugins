@@ -36,7 +36,7 @@ namespace Oxide.Plugins
 
         private bool _isShipwreckEventActive = false;
         
-        #region ShipwreckEvent
+        #region ShipwreckEventToggle
         void OnShipwreckStart()
         {
             _isShipwreckEventActive = true;
@@ -46,7 +46,9 @@ namespace Oxide.Plugins
         {
             _isShipwreckEventActive = false;
         }
+        #endregion
         
+        #region SpawnedCrates
         void OnEntitySpawned(BaseEntity entity)
         {
             if (_isShipwreckEventActive)
@@ -62,7 +64,7 @@ namespace Oxide.Plugins
         }
         #endregion
 
-        #endregion
+        
 
         #region Classes
         class MakeBuoyant : MonoBehaviour
