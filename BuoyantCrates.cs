@@ -34,18 +34,34 @@ namespace Oxide.Plugins
             _config = Config.ReadObject<PluginConfig>();
         }
 
+        private bool _isShipwreckEventActive = false;
+        
+        #region ShipwreckEvent
+        void OnShipwreckStart()
+        {
+            _isShipwreckEventActive = true;
+        }
+        
+        void OnShipwreckEnd()
+        {
+            _isShipwreckEventActive = false;
+        }
+        
         void OnEntitySpawned(BaseEntity entity)
         {
-            var isShipwreckEvent = Interface.CallHook("OnShipwreckStart");
-            if (isShipwreckEvent != null)
+            if (_isShipwreckEventActive)
             {
                 return;
             }
+        
             if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate" && entity.ShortPrefabName != "supply_drop")) return;
+        
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
             buoyancy.buoyancyScale = 1f;
             buoyancy.detectionRate = _config.DetectionRate;
         }
+        #endregion
+
         #endregion
 
         #region Classes
