@@ -3,6 +3,8 @@ using Rust;
 using System;
 using Oxide.Core;
 
+// 1.6.1: fixed incorrect hook usage with help from Mabel
+
 namespace Oxide.Plugins
 {
     [Info("Buoyant Crates", "Tacman", "1.6.0")]
