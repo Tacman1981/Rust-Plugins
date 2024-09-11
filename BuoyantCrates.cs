@@ -18,7 +18,7 @@ namespace Oxide.Plugins
             return new PluginConfig
             {
                 DetectionRate = 1,
-                ShipwreckStartDelay = 5f, // Configurable delay to toggle off _iseventstarted without toggling the event off.
+                ShipwreckStartDelay = 5f, // Configurable delay to toggle off _isShipwreckEventActive without toggling the event off.
                 BuoyancyScale = 1f
             };
         }
@@ -52,7 +52,7 @@ namespace Oxide.Plugins
         {
             _isShipwreckEventActive = true;
             
-            //Wait your configured time here then turn off the event, so it doesnt interfere with normal plugin behaviour for the length of the event. Fingers crossed
+            //Wait your configured time here then turn off the event marker, so it doesnt interfere with normal plugin behaviour for the length of the event. Fingers crossed
             timer.Once(_config.ShipwreckStartDelay, () =>
             {
                 _isShipwreckEventActive = false;
