@@ -64,8 +64,6 @@ namespace Oxide.Plugins
         }
         #endregion
 
-        
-
         #region Classes
         class MakeBuoyant : MonoBehaviour
         {
