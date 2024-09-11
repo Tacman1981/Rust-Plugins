@@ -3,15 +3,14 @@ using Rust;
 using System;
 using Oxide.Core;
 
-// 1.6.1: fixed incorrect hook usage with help from Mabel
-
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "1.6.0")]
+    [Info("Buoyant Crates", "Tacman", "1.7.0")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
         #region Config
+        
         public PluginConfig _config;
 
         public PluginConfig GetDefaultConfig()
@@ -19,38 +18,51 @@ namespace Oxide.Plugins
             return new PluginConfig
             {
                 DetectionRate = 1,
+                ShipwreckStartDelay = 5f, // Configurable delay to toggle off _iseventstarted without toggling the event off.
+                BuoyancyScale = 1f
             };
         }
 
         public class PluginConfig
         {
-            public int DetectionRate;
+            public int DetectionRate = 1;
+            public float ShipwreckStartDelay = 5f; // Delay in seconds
+            public float BuoyancyScale = 1f;
         }
+
         #endregion
 
         #region Oxide
+        
         protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
 
         void Init()
         {
             _config = Config.ReadObject<PluginConfig>();
+            Config.WriteObject(_config, true);
         }
 
+        #endregion
+        
+        #region ShipwreckEvent
+        
         private bool _isShipwreckEventActive = false;
         
-        #region ShipwreckEventToggle
         void OnShipwreckStart()
         {
             _isShipwreckEventActive = true;
+            
+            //Wait your configured time here then turn off the event, so it doesnt interfere with normal plugin behaviour for the length of the event. Fingers crossed
+            timer.Once(_config.ShipwreckStartDelay, () =>
+            {
+                _isShipwreckEventActive = false;
+            });
         }
-        
-        void OnShipwreckEnd()
-        {
-            _isShipwreckEventActive = false;
-        }
+
         #endregion
         
-        #region SpawnedCrates
+        #region Spawn
+        
         void OnEntitySpawned(BaseEntity entity)
         {
             if (_isShipwreckEventActive)
@@ -61,12 +73,14 @@ namespace Oxide.Plugins
             if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate" && entity.ShortPrefabName != "supply_drop")) return;
         
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
-            buoyancy.buoyancyScale = 1f;
+            buoyancy.buoyancyScale = _config.BuoyancyScale;
             buoyancy.detectionRate = _config.DetectionRate;
         }
+        
         #endregion
 
         #region Classes
+        
         class MakeBuoyant : MonoBehaviour
         {
             public float buoyancyScale;
@@ -119,6 +133,7 @@ namespace Oxide.Plugins
                 buoyancy.SavePointData();
             }
         }
+        
         #endregion
     }
 }
