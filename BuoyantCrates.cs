@@ -74,11 +74,9 @@ namespace Oxide.Plugins
         
             if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate" && entity.ShortPrefabName != "supply_drop")) return;
         
-            // Get the current position of the entity
             Vector3 currentPosition = entity.transform.position;
         
-            // Move the entity 15 units above its current position
-            Vector3 newPosition = currentPosition + new Vector3(0, 15f, 0);
+            Vector3 newPosition = currentPosition + new Vector3(0, 5f, 0);
             
             entity.transform.position = newPosition;
             
