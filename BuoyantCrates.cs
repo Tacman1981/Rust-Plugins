@@ -5,7 +5,7 @@ using Oxide.Core;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "1.7.0")]
+    [Info("Buoyant Crates", "Tacman", "1.7.5")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
@@ -19,7 +19,8 @@ namespace Oxide.Plugins
             {
                 DetectionRate = 1,
                 ShipwreckStartDelay = 5f, // Configurable delay to toggle off _isShipwreckEventActive.
-                BuoyancyScale = 1f
+                BuoyancyScale = 1f,
+                BuoyancyScaleWarning = "Recommended range for optimal performance should be between 1 and 3. Any higher will result in hilarious but counter productive behaviour, too high and it could despawn the crates"
             };
         }
 
@@ -28,6 +29,7 @@ namespace Oxide.Plugins
             public int DetectionRate = 1;
             public float ShipwreckStartDelay = 5f; // Delay in seconds
             public float BuoyancyScale = 1f;
+            public string BuoyancyScaleWarning = "Recommended range for optimal performance should be between 1 and 3. Any higher will result in hilarious but counter productive behaviour, too high and it could despawn the crates";
         }
 
         #endregion
