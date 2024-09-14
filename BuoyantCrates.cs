@@ -18,7 +18,7 @@ namespace Oxide.Plugins
             return new PluginConfig
             {
                 DetectionRate = 1,
-                ShipwreckStartDelay = 5f, // Configurable delay to toggle off _isShipwreckEventActive without toggling the event off.
+                ShipwreckStartDelay = 5f, // Configurable delay to toggle off _isShipwreckEventActive.
                 BuoyancyScale = 1f
             };
         }
