@@ -5,7 +5,7 @@ using Oxide.Core;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "1.7.5")]
+    [Info("Buoyant Crates", "Tacman", "1.7.0")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
@@ -75,8 +75,8 @@ namespace Oxide.Plugins
             // Get the current position of the entity
             Vector3 currentPosition = entity.transform.position;
         
-            // Move the entity 10 units above its current position
-            Vector3 newPosition = currentPosition + new Vector3(0, 20f, 0);
+            // Move the entity 15 units above its current position
+            Vector3 newPosition = currentPosition + new Vector3(0, 15f, 0);
             
             entity.transform.position = newPosition;
             
