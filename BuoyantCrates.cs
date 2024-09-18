@@ -5,7 +5,7 @@ using Oxide.Core;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "1.7.5")]
+    [Info("Buoyant Crates", "Tacman", "1.7.6")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
@@ -73,12 +73,16 @@ namespace Oxide.Plugins
             }
         
             if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate" && entity.ShortPrefabName != "supply_drop")) return;
-        
-            Vector3 currentPosition = entity.transform.position;
-        
-            Vector3 newPosition = currentPosition + new Vector3(0, 5f, 0);
-            
-            entity.transform.position = newPosition;
+
+            //Added this transform to prevent crates being pushed underground when helis die on land, you can adjust the 5f to whatever is required. This also prevents gibs pulling crates under the water
+            if (entity.ShortPrefabName == "heli_crate")
+            {
+                Vector3 currentPosition = entity.transform.position;
+
+                Vector3 newPosition = currentPosition + new Vector3(0, 5f, 0);
+
+                entity.transform.position = newPosition;
+            }
             
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
             buoyancy.buoyancyScale = _config.BuoyancyScale;
