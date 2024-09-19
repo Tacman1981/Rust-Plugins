@@ -274,7 +274,7 @@ namespace Oxide.Plugins
                     if (permission.UserHasPermission(player.UserIDString, permissionName))
                     {
                         //Notify player they are not allowed to place this object(permission granted)
-                        player.ChatMessage(lang.GetMessage("NotAllowed", this, player.UserIDString));
+                        player.ChatMessage(lang.GetMessage("NotAllowed", this));
 
                         // Return false to prevent the build
                         return false;
