@@ -28,6 +28,7 @@ namespace Oxide.Plugins
         public class PluginConfig
         {
             public int DetectionRate = 1;
+            [JsonProperty("This setting controls delay after shipwreck starts before it returns to normal(in seconds), if you have Shipwreck plugin.")]
             public float ShipwreckStartDelay = 5f; // Delay in seconds
             [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results)")]
             public float BuoyancyScale = 1f;
