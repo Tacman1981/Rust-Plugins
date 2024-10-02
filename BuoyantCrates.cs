@@ -1,3 +1,5 @@
+//Will not compile until after october 3rd update.
+
 using UnityEngine;
 using Rust;
 using System;
