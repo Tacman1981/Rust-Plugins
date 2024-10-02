@@ -79,11 +79,7 @@ namespace Oxide.Plugins
             //Added this transform to prevent crates being pushed underground when helis die on land, you can adjust the 5f to whatever is required. This also prevents gibs pulling crates under the water
             if (entity.ShortPrefabName == "heli_crate")
             {
-                Vector3 currentPosition = entity.transform.position;
-
-                Vector3 newPosition = currentPosition + new Vector3(0, 5f, 0);
-
-                entity.transform.position = newPosition;
+                entity.transform.position += new Vector3(0, 5f, 0);
             }
 
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
