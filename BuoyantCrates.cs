@@ -29,7 +29,7 @@ namespace Oxide.Plugins
         {
             public int DetectionRate = 1;
             public float ShipwreckStartDelay = 5f; // Delay in seconds
-            [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results")]
+            [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results)")]
             public float BuoyancyScale = 1f;
         }
 
