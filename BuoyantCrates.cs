@@ -1,11 +1,11 @@
-//Will not compile until after october 3rd update.
-
 using UnityEngine;
 using Rust;
 using System;
 using Oxide.Core;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+
+// V1.8.0: Added new descriptions in the config now to better explain their functionality. Yay for learning how to use JsonProperty :)
 
 namespace Oxide.Plugins
 {
@@ -30,7 +30,7 @@ namespace Oxide.Plugins
         public class PluginConfig
         {
             public int DetectionRate = 1;
-            [JsonProperty("This setting controls delay after shipwreck starts before it returns to normal(in seconds), if you have Shipwreck plugin.")]
+            [JsonProperty("Delay after Shipwreck event starts (in seconds) until the floating crate functionality returns")]
             public float ShipwreckStartDelay = 5f; // Delay in seconds
             [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results)")]
             public float BuoyancyScale = 1f;
@@ -57,11 +57,13 @@ namespace Oxide.Plugins
         void OnShipwreckStart()
         {
             _isShipwreckEventActive = true;
+            //Puts($"Buoyancy deactivated for {_config.ShipwreckStartDelay}")
 
             //Wait your configured time here then turn off the event marker, so it doesnt interfere with normal plugin behaviour for the length of the event. Fingers crossed
             timer.Once(_config.ShipwreckStartDelay, () =>
             {
                 _isShipwreckEventActive = false;
+                //Puts("Buoyancy reactivated on crates once again")
             });
         }
 
