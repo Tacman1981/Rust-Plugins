@@ -57,13 +57,13 @@ namespace Oxide.Plugins
         void OnShipwreckStart()
         {
             _isShipwreckEventActive = true;
-            //Puts($"Buoyancy deactivated for {_config.ShipwreckStartDelay}")
+            //Puts($"Buoyancy deactivated for {_config.ShipwreckStartDelay}");
 
             //Wait your configured time here then turn off the event marker, so it doesnt interfere with normal plugin behaviour for the length of the event. Fingers crossed
             timer.Once(_config.ShipwreckStartDelay, () =>
             {
                 _isShipwreckEventActive = false;
-                //Puts("Buoyancy reactivated on crates once again")
+                //Puts("Buoyancy reactivated on crates once again");
             });
         }
 
@@ -84,6 +84,7 @@ namespace Oxide.Plugins
             if (entity.ShortPrefabName == "heli_crate")
             {
                 entity.transform.position += new Vector3(0, 5f, 0);
+                Puts($"Tranformed position of {entity.ShortPrefabName}");
             }
 
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
