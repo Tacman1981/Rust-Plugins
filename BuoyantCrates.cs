@@ -34,8 +34,6 @@ namespace Oxide.Plugins
             public float ShipwreckStartDelay = 5f; // Delay in seconds
             [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results)")]
             public float BuoyancyScale = 1f;
-            [JsonProperty("debug")]
-            public bool debugMode = false;
         }
 
         #endregion
@@ -85,13 +83,8 @@ namespace Oxide.Plugins
             //Added this transform to prevent crates being pushed underground when helis die on land, you can adjust the 5f to whatever is required. This also prevents gibs pulling crates under the water
             if (entity.ShortPrefabName == "heli_crate")
             {
-                Vector3 originalPosition = entity.transform.position; // Store original position
-                entity.transform.position += new Vector3(0, 10f, 0); // Adjust position
-                Vector3 difference = entity.transform.position - originalPosition; // Calculate difference
-                if (_config.debugMode)
-                {
-                    Puts($"Transformed position of {entity.ShortPrefabName} by {difference}");
-                }
+                entity.transform.position += new Vector3(0, 5f, 0);
+                Puts($"Tranformed position of {entity.ShortPrefabName}");
             }
 
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
