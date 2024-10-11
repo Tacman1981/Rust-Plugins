@@ -1,3 +1,5 @@
+//Ultimate update, requires no further features. Will continue to be compiled for as long as I am able.
+
 using UnityEngine;
 using Rust;
 using System;
@@ -5,47 +7,50 @@ using Oxide.Core;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
-// V1.8.0: Added new descriptions in the config now to better explain their functionality. Yay for learning how to use JsonProperty :)
-
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "1.8.0")]
+    [Info("Buoyant Crates", "Tacman", "2.0.0")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
         #region Config
-
+        
         public PluginConfig _config;
-
-        public PluginConfig GetDefaultConfig()
-        {
-            return new PluginConfig
-            {
-                DetectionRate = 1,
-                ShipwreckStartDelay = 5f, // Configurable delay to toggle off _isShipwreckEventActive.
-                BuoyancyScale = 1f
-            };
-        }
 
         public class PluginConfig
         {
             public int DetectionRate = 1;
             [JsonProperty("Delay after Shipwreck event starts (in seconds) until the floating crate functionality returns")]
-            public float ShipwreckStartDelay = 5f; // Delay in seconds
+            public float ShipwreckStartDelay = 5f;
             [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results)")]
             public float BuoyancyScale = 1f;
+            [JsonProperty("debug")]
+            public bool debugMode = false;
+            [JsonProperty("Crates which will float(Uses Equals so shortname must be exact)")]
+            public List<string> CrateList = new List<string>();
         }
-
         #endregion
 
         #region Oxide
 
-        protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
+        protected override void LoadDefaultConfig()
+        {
+            // You can provide a more detailed configuration setup if needed
+            Config.WriteObject(new PluginConfig(), true);
+        }
 
         void Init()
         {
+            // Read the config
             _config = Config.ReadObject<PluginConfig>();
-            Config.WriteObject(_config, true);
+
+            // Ensure that the config has the required fields
+            if (_config.CrateList == null || _config.CrateList.Count == 0)
+            {
+                // Initialize the CrateList with default values if not present
+                _config.CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" };
+                Config.WriteObject(_config, true); // Update the config file
+            }
         }
 
         #endregion
@@ -57,13 +62,9 @@ namespace Oxide.Plugins
         void OnShipwreckStart()
         {
             _isShipwreckEventActive = true;
-            //Puts($"Buoyancy deactivated for {_config.ShipwreckStartDelay}");
-
-            //Wait your configured time here then turn off the event marker, so it doesnt interfere with normal plugin behaviour for the length of the event. Fingers crossed
             timer.Once(_config.ShipwreckStartDelay, () =>
             {
                 _isShipwreckEventActive = false;
-                //Puts("Buoyancy reactivated on crates once again");
             });
         }
 
@@ -73,18 +74,20 @@ namespace Oxide.Plugins
 
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (_isShipwreckEventActive)
+            if (_isShipwreckEventActive || entity == null || !_config.CrateList.Equals(entity.ShortPrefabName)) // Using Equals instead of Contains to ensure only the correct crates float.
             {
                 return;
             }
 
-            if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate" && entity.ShortPrefabName != "supply_drop")) return;
-
-            //Added this transform to prevent crates being pushed underground when helis die on land, you can adjust the 5f to whatever is required. This also prevents gibs pulling crates under the water
+            // Adjust position for heli_crate
             if (entity.ShortPrefabName == "heli_crate")
             {
-                entity.transform.position += new Vector3(0, 5f, 0);
-                Puts($"Tranformed position of {entity.ShortPrefabName}");
+                Vector3 originalPosition = entity.transform.position;
+                entity.transform.position += new Vector3(0, 10f, 0);
+                if (_config.debugMode)
+                {
+                    Puts($"Transformed position of {entity.ShortPrefabName} by {entity.transform.position - originalPosition}");
+                }
             }
 
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
