@@ -1,3 +1,5 @@
+//This will increase furnaces speed the more it is used. Config needs some work and logic too but it currently functions as is. Perfect for lightly modded pvp.
+
 using Oxide.Core;
 using UnityEngine;
 using System;
@@ -12,12 +14,11 @@ namespace Oxide.Plugins
     [Description("Increases furnace smelting speed over time.")]
     public class FurnaceSpeedUp : RustPlugin
     {
-        private const int MaxSpeed = 1000;
+        private const int MaxSpeed = 100;
         private Dictionary<ulong, int> furnaceCycleCount = new Dictionary<ulong, int>();
         private Dictionary<ulong, float> furnaceSpeeds = new Dictionary<ulong, float>();
         private Dictionary<ulong, int> furnaceSpeedUpgrades = new Dictionary<ulong, int>(); // New dictionary for speed upgrades
         private List<string> furnaceNames;
-        private Dictionary<ulong, float> temporaryFurnaceSpeeds = new Dictionary<ulong, float>(); // Temporary storage for speeds
 
         public class FurnaceData
         {
