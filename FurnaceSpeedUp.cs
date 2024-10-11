@@ -89,7 +89,7 @@ namespace Oxide.Plugins
             if (furnaceNames.Contains(item.info.shortname))
             {
                 BaseOven oven = item.GetWorldEntity() as BaseOven;
-                if (oven != null && oven.ShortPrefabName.Equals("Furnace"))
+                if (oven != null && oven.ShortPrefabName.Equals("furnace"))
                 {
                     ulong ovenId = oven.net.ID.Value;
                     float currentSpeed = oven.smeltSpeed;
