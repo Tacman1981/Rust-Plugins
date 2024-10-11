@@ -16,7 +16,7 @@ namespace Oxide.Plugins
     [Description("Increases furnace smelting speed over time.")]
     public class FurnaceSpeedUp : RustPlugin
     {
-        private const int MaxSpeed = 100;
+        private const int MaxSpeed = 500;
         private Dictionary<ulong, int> furnaceCycleCount = new Dictionary<ulong, int>();
         private Dictionary<ulong, float> furnaceSpeeds = new Dictionary<ulong, float>();
         private Dictionary<ulong, int> furnaceSpeedUpgrades = new Dictionary<ulong, int>(); // New dictionary for speed upgrades
