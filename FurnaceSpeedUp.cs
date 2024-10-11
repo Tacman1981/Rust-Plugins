@@ -1,4 +1,5 @@
 //This will increase furnaces speed the more it is used. Config needs some work and logic too but it currently functions as is. Perfect for lightly modded pvp.
+//Example of time as a currency.
 
 using Oxide.Core;
 using UnityEngine;
