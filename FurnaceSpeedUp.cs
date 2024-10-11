@@ -1,5 +1,6 @@
 //This will increase furnaces speed the more it is used. Config needs some work and logic too but it currently functions as is. Perfect for lightly modded pvp.
 //Example of time as a currency. Might make it more like an xp table, so furnaces dont have linear growth, essentially, the fast becoming faster.
+//Still trying to figure out picking up of the furnace to retain upgrades, will make this configurable too, so PVE servers can also use it.
 
 using Oxide.Core;
 using UnityEngine;
