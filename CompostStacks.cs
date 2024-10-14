@@ -5,10 +5,15 @@ using Oxide.Plugins;
 using Oxide.Core.Libraries.Covalence;
 using Oxide.Core;
 using System.IO;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Security;
+using Newtonsoft.Json;
+using System;
 
 namespace Oxide.Plugins
 {
-    [Info("Compost Stacks", "Tacman", "2.1.0")]
+    [Info("Compost Stacks", "Tacman", "2.1.1")]
     [Description("Toggle the CompostEntireStack boolean on load and for new Composter entities, which will compost entire stacks of all compostable items.")]
     public class CompostStacks : RustPlugin
     {
@@ -41,7 +46,10 @@ namespace Oxide.Plugins
                 }
                 else
                 {
+                    if (config.debug)
+                    {
                     Puts($"Owner player not found for OwnerID: {ownerID}");
+                    }
                 }
             }
         }
@@ -119,10 +127,48 @@ namespace Oxide.Plugins
                 UpdateComposters();
             }
         }
-        
+
         private bool HasPermission(IPlayer player)
         {
             return player.HasPermission(permissionName);
         }
+
+
+        #region Config
+        static Configuration config;
+        public class Configuration
+        {
+            [JsonProperty(PropertyName = "Debug")]
+            public bool debug;
+
+            public static Configuration DefaultConfig()
+            {
+                return new Configuration
+                {
+                    debug = false
+                };
+            }
+        }
+
+        protected override void LoadConfig()
+        {
+            base.LoadConfig();
+            try
+            {
+                config = Config.ReadObject<Configuration>();
+                if (config == null) LoadDefaultConfig();
+                SaveConfig();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                PrintWarning("Creating new configuration file.");
+                LoadDefaultConfig();
+            }
+        }
+
+        protected override void LoadDefaultConfig() => config = Configuration.DefaultConfig();
+        protected override void SaveConfig() => Config.WriteObject(config);
+        #endregion
     }
 }
