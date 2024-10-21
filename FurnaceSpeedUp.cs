@@ -16,11 +16,12 @@ namespace Oxide.Plugins
     [Description("Increases furnace smelting speed over time.")]
     public class FurnaceSpeedUp : RustPlugin
     {
-        private const int MaxSpeed = 500;
+        private const int MaxSpeed = 1000;
         private Dictionary<ulong, int> furnaceCycleCount = new Dictionary<ulong, int>();
         private Dictionary<ulong, float> furnaceSpeeds = new Dictionary<ulong, float>();
         private Dictionary<ulong, int> furnaceSpeedUpgrades = new Dictionary<ulong, int>(); // New dictionary for speed upgrades
         private List<string> furnaceNames;
+        private Dictionary<ulong, float> temporaryFurnaceSpeeds = new Dictionary<ulong, float>(); // Temporary storage for speeds
 
         public class FurnaceData
         {
@@ -89,7 +90,7 @@ namespace Oxide.Plugins
             if (furnaceNames.Contains(item.info.shortname))
             {
                 BaseOven oven = item.GetWorldEntity() as BaseOven;
-                if (oven != null && oven.ShortPrefabName.Equals("furnace"))
+                if (oven != null && oven.ShortPrefabName.Equals("Furnace"))
                 {
                     ulong ovenId = oven.net.ID.Value;
                     float currentSpeed = oven.smeltSpeed;
