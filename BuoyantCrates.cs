@@ -74,7 +74,7 @@ namespace Oxide.Plugins
 
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (_isShipwreckEventActive || entity == null || !_config.CrateList.Equals(entity.ShortPrefabName)) // Using Equals instead of Contains to ensure only the correct crates float.
+            if (_isShipwreckEventActive || entity == null || !_config.CrateList.Contains(entity.ShortPrefabName)) // Using Equals instead of Contains to ensure only the correct crates float.
             {
                 return;
             }
