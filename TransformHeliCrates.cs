@@ -1,3 +1,5 @@
+using Oxide.Core;
+using Oxide.Core.Plugins;
 using Facepunch;
 using UnityEngine;
 using System.Collections.Generic;
@@ -37,7 +39,7 @@ namespace Oxide.Plugins
 
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (entity == null || entity.ShortPrefabName != "heli_crate")
+            if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate"))
             {
                 return;
             }
