@@ -1,4 +1,4 @@
-//Ultimate update, requires no further features. Will continue to be compiled for as long as I am able.
+//Had a lot of fun with this 1, people keep creating events that conflict with part of the code, so i have to keep adding to it
 
 using UnityEngine;
 using Rust;
@@ -9,24 +9,27 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "2.0.0")]
-    [Description("Makes helicopter and code locked hackable crates buoyant")]
+    [Info("Buoyant Crates", "Tacman", "2.0.3")]
+    [Description("Configurable crate buoyancy, add your own crates to config by shortname")]
     class BuoyantCrates : RustPlugin
     {
         #region Config
-        
+
         public PluginConfig _config;
 
         public class PluginConfig
         {
+            [JsonProperty("How long after the crate lands in water does it apply buoyancy (lower is faster)")]
             public int DetectionRate = 1;
+            [JsonProperty("Transform position of helicopter crates upwards by this much")]
+            public int transformY = 10;
             [JsonProperty("Delay after Shipwreck event starts (in seconds) until the floating crate functionality returns")]
             public float ShipwreckStartDelay = 5f;
             [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results)")]
             public float BuoyancyScale = 1f;
             [JsonProperty("debug")]
             public bool debugMode = false;
-            [JsonProperty("Crates which will float(Uses Equals so shortname must be exact)")]
+            [JsonProperty("Crates which will float (Uses Equals so shortname must be exact)")]
             public List<string> CrateList = new List<string>();
         }
         #endregion
@@ -35,29 +38,55 @@ namespace Oxide.Plugins
 
         protected override void LoadDefaultConfig()
         {
-            // You can provide a more detailed configuration setup if needed
-            Config.WriteObject(new PluginConfig(), true);
+            // Set default config values directly
+            _config = new PluginConfig
+            {
+                DetectionRate = 1,
+                transformY = 10,
+                ShipwreckStartDelay = 5f,
+                BuoyancyScale = 1f,
+                debugMode = false,
+                CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" }
+            };
+
+            // Write the default config to the file
+            Config.WriteObject(_config, true);
         }
 
         void Init()
         {
-            // Read the config
+            // Load the config
             _config = Config.ReadObject<PluginConfig>();
 
             // Ensure that the config has the required fields
             if (_config.CrateList == null || _config.CrateList.Count == 0)
             {
-                // Initialize the CrateList with default values if not present
                 _config.CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" };
-                Config.WriteObject(_config, true); // Update the config file
             }
+
+            // Check and set default values for other fields if they are missing
+            if (_config.DetectionRate <= 0)
+                _config.DetectionRate = 1;
+
+            if (_config.transformY <= 0)
+                _config.transformY = 10;
+
+            if (_config.ShipwreckStartDelay <= 0)
+                _config.ShipwreckStartDelay = 5f;
+
+            if (_config.BuoyancyScale <= 0)
+                _config.BuoyancyScale = 1f;
+
+            // Update the config file if any changes were made
+            Config.WriteObject(_config, true);
         }
 
         #endregion
 
-        #region ShipwreckEvent
+        #region Events
 
         private bool _isShipwreckEventActive = false;
+        private bool _isJunkyardEventActive = false;
 
         void OnShipwreckStart()
         {
@@ -66,6 +95,18 @@ namespace Oxide.Plugins
             {
                 _isShipwreckEventActive = false;
             });
+        }
+
+        void OnJunkyardEventStart()
+        {
+            _isJunkyardEventActive = true;
+            //Puts("Junkyard event started, disabling transform position");
+        }
+
+        void OnJunkyardEventEnd()
+        {
+            _isJunkyardEventActive = false;
+            //Puts("Junkyard event stopped, transform position enabled");
         }
 
         #endregion
@@ -80,16 +121,28 @@ namespace Oxide.Plugins
             }
 
             // Adjust position for heli_crate
-            if (entity.ShortPrefabName == "heli_crate")
+            if (entity.ShortPrefabName == "heli_crate" && !_isJunkyardEventActive)
             {
                 Vector3 originalPosition = entity.transform.position;
-                entity.transform.position += new Vector3(0, 10f, 0);
+                entity.transform.position += new Vector3(0, _config.transformY, 0);
                 if (_config.debugMode)
                 {
                     Puts($"Transformed position of {entity.ShortPrefabName} by {entity.transform.position - originalPosition}");
                 }
+
+                // Delay checking for the Rigidbody
+                timer.Once(1f, () =>
+                {
+                    Rigidbody rb = entity.GetComponent<Rigidbody>();
+                    if (rb == null)
+                    {
+                        rb = entity.gameObject.AddComponent<Rigidbody>();
+                    }
+                    rb.useGravity = true; // Ensure gravity is applied
+                });
             }
 
+            // Existing buoyancy logic for other entities
             MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
             buoyancy.buoyancyScale = _config.BuoyancyScale;
             buoyancy.detectionRate = _config.DetectionRate;
