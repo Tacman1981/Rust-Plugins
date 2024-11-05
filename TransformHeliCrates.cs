@@ -1,4 +1,4 @@
-﻿using Facepunch;
+using Facepunch;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -15,7 +15,7 @@ namespace Oxide.Plugins
             if (entity is PatrolHelicopter helicopter && info.InitiatorPlayer != null)
             {
                 heliKillers[helicopter] = info.InitiatorPlayer;
-                Puts($"Tracking player {info.InitiatorPlayer.displayName} for helicopter damage.");
+                //Puts($"Tracking player {info.InitiatorPlayer.displayName} for helicopter damage.");
             }
         }
 
@@ -25,12 +25,12 @@ namespace Oxide.Plugins
             {
                 if (heliKillers.TryGetValue(helicopter, out BasePlayer killer))
                 {
-                    Puts($"Helicopter killed by {killer.displayName}");
+                    //Puts($"Helicopter killed by {killer.displayName}");
                     heliKillers.Remove(helicopter);
                 }
                 else
                 {
-                    Puts("No killer found for helicopter.");
+                    //Puts("No killer found for helicopter.");
                 }
             }
         }
@@ -61,7 +61,7 @@ namespace Oxide.Plugins
 
             if (owner == null)
             {
-                Puts("Failed to identify crate owner after multiple attempts.");
+                //Puts("Failed to identify crate owner after multiple attempts.");
                 return;
             }
 
@@ -77,7 +77,7 @@ namespace Oxide.Plugins
                 if (rb == null)
                 {
                     rb = entity.gameObject.AddComponent<Rigidbody>();
-                    Puts($"Added Rigidbody to {entity.ShortPrefabName}");
+                    //Puts($"Added Rigidbody to {entity.ShortPrefabName}");
                 }
                 rb.useGravity = true;
             });
