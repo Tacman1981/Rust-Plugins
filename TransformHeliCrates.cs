@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.0.10")]
+    [Info("TransformHeliCrates", "Tacman", "0.0.11")]
     [Description("Moves heli crates to the player who destroyed the helicopter.")]
     public class TransformHeliCrates : RustPlugin
     {
