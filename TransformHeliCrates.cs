@@ -68,6 +68,16 @@ namespace Oxide.Plugins
             }
 
             Vector3 playerPosition = owner.transform.position;
+            float distance = Vector3.Distance(entity.transform.position, playerPosition);
+
+            // Ensure crate is within 10f of the owner
+            if (distance > 10f)
+            {
+                Puts($"Crate is too far from {owner.displayName}'s position to move.");
+                return;
+            }
+
+            // Move the crate to the player's position + 1.5f (so it doesn't spawn inside the player)
             entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
             entity.SendNetworkUpdateImmediate();
 
@@ -83,6 +93,46 @@ namespace Oxide.Plugins
                 }
                 rb.useGravity = true;
             });
+        }
+
+        // Command to move all crates to their owners
+        [ChatCommand("crates")]
+        private void MoveAllCrates(BasePlayer player, string command, string[] args)
+        {
+            List<BaseEntity> crates = new List<BaseEntity>();
+            foreach (BaseEntity entity in BaseEntity.serverEntities)
+            {
+                if (entity is BaseEntity crate && (crate.ShortPrefabName == "heli_crate" || crate.ShortPrefabName == "codelockedhackablecrate"))
+                {
+                    crates.Add(crate);
+                }
+            }
+
+            if (crates.Count == 0)
+            {
+                player.ChatMessage("No crates found.");
+                return;
+            }
+
+            int movedCount = 0;
+            foreach (BaseEntity crate in crates)
+            {
+                // Check the crate's owner and distance before moving
+                ulong ownerId = crate.OwnerID;
+                BasePlayer owner = BasePlayer.FindByID(ownerId);
+
+                if (owner != null && Vector3.Distance(crate.transform.position, owner.transform.position) <= 10f)
+                {
+                    CheckOwnerAndMove(crate);
+                    movedCount++;
+                }
+                else
+                {
+                    player.ChatMessage($"Crate {crate.ShortPrefabName} is either too far from the owner or has no valid owner.");
+                }
+            }
+
+            player.ChatMessage($"Moved {movedCount} crate(s) to their owners.");
         }
 
         void Unload()
