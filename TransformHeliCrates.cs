@@ -67,17 +67,8 @@ namespace Oxide.Plugins
                 return;
             }
 
-            Vector3 playerPosition = owner.transform.position;
-            float distance = Vector3.Distance(entity.transform.position, playerPosition);
-
-            // Ensure crate is within 10f of the owner
-            if (distance > 10f)
-            {
-                Puts($"Crate is too far from {owner.displayName}'s position to move.");
-                return;
-            }
-
             // Move the crate to the player's position + 1.5f (so it doesn't spawn inside the player)
+            Vector3 playerPosition = owner.transform.position;
             entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
             entity.SendNetworkUpdateImmediate();
 
@@ -95,7 +86,7 @@ namespace Oxide.Plugins
             });
         }
 
-        // Command to move all crates to their owners
+        // Command to move all crates to their owners, with distance check
         [ChatCommand("crates")]
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
         {
@@ -110,25 +101,34 @@ namespace Oxide.Plugins
 
             if (crates.Count == 0)
             {
-                player.ChatMessage("No crates found.");
+                player.ChatMessage("No crates found in range 10f.");
                 return;
             }
 
             int movedCount = 0;
             foreach (BaseEntity crate in crates)
             {
-                // Check the crate's owner and distance before moving
+                // Check if the crate is within 10 units of the player issuing the command
                 ulong ownerId = crate.OwnerID;
                 BasePlayer owner = BasePlayer.FindByID(ownerId);
 
-                if (owner != null && Vector3.Distance(crate.transform.position, owner.transform.position) <= 10f)
+                if (owner != null)
                 {
-                    CheckOwnerAndMove(crate);
-                    movedCount++;
+                    float distance = Vector3.Distance(crate.transform.position, player.transform.position);
+
+                    if (distance <= 10f)
+                    {
+                        CheckOwnerAndMove(crate);
+                        movedCount++;
+                    }
+                    else
+                    {
+                        player.ChatMessage($"Crate {crate.ShortPrefabName} is too far from your position to move.");
+                    }
                 }
                 else
                 {
-                    player.ChatMessage($"Crate {crate.ShortPrefabName} is either too far from the owner or has no valid owner.");
+                    player.ChatMessage($"Crate {crate.ShortPrefabName} has no valid owner.");
                 }
             }
 
