@@ -56,7 +56,7 @@ namespace Oxide.Plugins
 
             if (owner == null && ownerId == 0)
             {
-                Puts("Owner not found for crate spawn, retrying...");
+                //Puts("Owner not found for crate spawn, retrying...");
                 timer.Once(0.1f, () => CheckOwnerAndMove(entity));
                 return;
             }
@@ -128,11 +128,11 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    player.ChatMessage($"Crate {crate.ShortPrefabName} has no valid owner.");
+                    //player.ChatMessage($"Crate {crate.ShortPrefabName} has no valid owner.");
                 }
             }
 
-            player.ChatMessage($"Moved {movedCount} crate(s) to their owners.");
+            //player.ChatMessage($"Moved {movedCount} crate(s) to Owners Position.");
         }
 
         void Unload()
