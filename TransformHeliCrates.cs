@@ -3,21 +3,31 @@ using Oxide.Core.Plugins;
 using Facepunch;
 using UnityEngine;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using System;
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.0.11")]
+    [Info("TransformHeliCrates", "Tacman", "0.0.13")]
     [Description("Moves heli crates to the player who destroyed the helicopter.")]
     public class TransformHeliCrates : RustPlugin
     {
         private Dictionary<PatrolHelicopter, BasePlayer> heliKillers = new Dictionary<PatrolHelicopter, BasePlayer>();
+        private Dictionary<ulong, DateTime> lastCommandUsage = new Dictionary<ulong, DateTime>();
+
+        private const string PermissionBlockCrates = "transformhelicrates.block";
+
+        void Init()
+        {
+            // Register the block permission
+            permission.RegisterPermission(PermissionBlockCrates, this);
+        }
 
         void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
         {
             if (entity is PatrolHelicopter helicopter && info.InitiatorPlayer != null)
             {
                 heliKillers[helicopter] = info.InitiatorPlayer;
-                //Puts($"Tracking player {info.InitiatorPlayer.displayName} for helicopter damage.");
             }
         }
 
@@ -27,12 +37,7 @@ namespace Oxide.Plugins
             {
                 if (heliKillers.TryGetValue(helicopter, out BasePlayer killer))
                 {
-                    //Puts($"Helicopter killed by {killer.displayName}");
                     heliKillers.Remove(helicopter);
-                }
-                else
-                {
-                    //Puts("No killer found for helicopter.");
                 }
             }
         }
@@ -52,22 +57,17 @@ namespace Oxide.Plugins
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
-            //Puts($"Crate spawned with OwnerID: {ownerId}");
-
             if (owner == null && ownerId == 0)
             {
-                //Puts("Owner not found for crate spawn, retrying...");
                 timer.Once(0.1f, () => CheckOwnerAndMove(entity));
                 return;
             }
 
             if (owner == null)
             {
-                //Puts("Failed to identify crate owner after multiple attempts.");
                 return;
             }
 
-            // Move the crate to the player's position + 1.5f (so it doesn't spawn inside the player)
             Vector3 playerPosition = owner.transform.position;
             entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
             entity.SendNetworkUpdateImmediate();
@@ -80,16 +80,27 @@ namespace Oxide.Plugins
                 if (rb == null)
                 {
                     rb = entity.gameObject.AddComponent<Rigidbody>();
-                    //Puts($"Added Rigidbody to {entity.ShortPrefabName}");
                 }
                 rb.useGravity = true;
             });
         }
 
-        // Command to move all crates to their owners, with distance check
         [ChatCommand("crates")]
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
         {
+            // Block permission check
+            if (permission.UserHasPermission(player.UserIDString, PermissionBlockCrates))
+            {
+                player.ChatMessage("You do not have permission to use this command.");
+                return;
+            }
+
+            if (lastCommandUsage.TryGetValue(player.userID, out DateTime lastUse) && (DateTime.Now - lastUse).TotalSeconds < config.coolDown)
+            {
+                player.ChatMessage($"Please wait {config.coolDown - (int)(DateTime.Now - lastUse).TotalSeconds} seconds before using this command again.");
+                return;
+            }
+
             List<BaseEntity> crates = new List<BaseEntity>();
             foreach (BaseEntity entity in BaseEntity.serverEntities)
             {
@@ -101,14 +112,13 @@ namespace Oxide.Plugins
 
             if (crates.Count == 0)
             {
-                player.ChatMessage("No crates found in range 10f.");
+                player.ChatMessage("No crates found within range.");
                 return;
             }
 
             int movedCount = 0;
             foreach (BaseEntity crate in crates)
             {
-                // Check if the crate is within 10 units of the player issuing the command
                 ulong ownerId = crate.OwnerID;
                 BasePlayer owner = BasePlayer.FindByID(ownerId);
 
@@ -126,18 +136,55 @@ namespace Oxide.Plugins
                         player.ChatMessage($"Crate {crate.ShortPrefabName} is too far from your position to move.");
                     }
                 }
-                else
-                {
-                    //player.ChatMessage($"Crate {crate.ShortPrefabName} has no valid owner.");
-                }
             }
 
-            //player.ChatMessage($"Moved {movedCount} crate(s) to Owners Position.");
+            player.ChatMessage($"Moved {movedCount} crate(s) to Owners Position.");
+            lastCommandUsage[player.userID] = DateTime.Now;
         }
 
         void Unload()
         {
             heliKillers.Clear();
+            lastCommandUsage.Clear();
         }
+
+        #region Config
+
+        static Configuration config;
+        public class Configuration
+        {
+            [JsonProperty("Command Cooldown")]
+            public int coolDown;
+
+            public static Configuration DefaultConfig()
+            {
+                return new Configuration
+                {
+                    coolDown = 10
+                };
+            }
+        }
+
+        protected override void LoadConfig()
+        {
+            base.LoadConfig();
+            try
+            {
+                config = Config.ReadObject<Configuration>();
+                if (config == null) LoadDefaultConfig();
+                SaveConfig();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                PrintWarning("Creating new configuration file.");
+                LoadDefaultConfig();
+            }
+        }
+
+        protected override void LoadDefaultConfig() => config = Configuration.DefaultConfig();
+        protected override void SaveConfig() => Config.WriteObject(config);
+
+        #endregion
     }
 }
