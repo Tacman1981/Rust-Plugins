@@ -15,7 +15,7 @@ namespace Oxide.Plugins
         private Dictionary<PatrolHelicopter, BasePlayer> heliKillers = new Dictionary<PatrolHelicopter, BasePlayer>();
         private Dictionary<ulong, DateTime> lastCommandUsage = new Dictionary<ulong, DateTime>();
 
-        private const string PermissionBlockCommand = "transformhelicrates.block";
+        private const string PermissionBlockCommand = "transformhelicrates.blockcommand";
 
         void Init()
         {
