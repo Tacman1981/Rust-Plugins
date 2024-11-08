@@ -15,12 +15,12 @@ namespace Oxide.Plugins
         private Dictionary<PatrolHelicopter, BasePlayer> heliKillers = new Dictionary<PatrolHelicopter, BasePlayer>();
         private Dictionary<ulong, DateTime> lastCommandUsage = new Dictionary<ulong, DateTime>();
 
-        private const string PermissionBlockCrates = "transformhelicrates.block";
+        private const string PermissionBlockCommand = "transformhelicrates.block";
 
         void Init()
         {
             // Register the block permission
-            permission.RegisterPermission(PermissionBlockCrates, this);
+            permission.RegisterPermission(PermissionBlockCommand, this);
         }
 
         void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
@@ -89,7 +89,7 @@ namespace Oxide.Plugins
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
         {
             // Block permission check
-            if (permission.UserHasPermission(player.UserIDString, PermissionBlockCrates))
+            if (permission.UserHasPermission(player.UserIDString, PermissionBlockCommand))
             {
                 player.ChatMessage("You do not have permission to use this command.");
                 return;
