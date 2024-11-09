@@ -88,6 +88,7 @@ namespace Oxide.Plugins
             // Opt-in check for automatic crate transform
             if (owner == null || !playerOptInStatus.GetValueOrDefault(ownerId, true))
             {
+                //return here if player query is not true
                 return;
             }
 
