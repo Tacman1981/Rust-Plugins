@@ -8,19 +8,52 @@ using System;
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.0.13")]
-    [Description("Moves heli crates to the player who destroyed the helicopter.")]
+    [Info("TransformHeliCrates", "Tacman", "0.0.15")]
+    [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
         private Dictionary<PatrolHelicopter, BasePlayer> heliKillers = new Dictionary<PatrolHelicopter, BasePlayer>();
         private Dictionary<ulong, DateTime> lastCommandUsage = new Dictionary<ulong, DateTime>();
-
-        private const string PermissionBlockCommand = "transformhelicrates.blockcommand";
+        private Dictionary<ulong, bool> playerOptInStatus = new Dictionary<ulong, bool>();
+        private const string PermissionBlockCommand = "transformhelicrates.block";
+        private const string dataFilePath = "TransformHeliCrates_OptInStatus";
 
         void Init()
         {
-            // Register the block permission
             permission.RegisterPermission(PermissionBlockCommand, this);
+            LoadOptInData();
+        }
+
+        void Unload()
+        {
+            SaveOptInData();
+            heliKillers.Clear();
+            lastCommandUsage.Clear();
+        }
+
+        private void LoadOptInData()
+        {
+            playerOptInStatus = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, bool>>(dataFilePath) ?? new Dictionary<ulong, bool>();
+        }
+
+        private void SaveOptInData()
+        {
+            Interface.Oxide.DataFileSystem.WriteObject(dataFilePath, playerOptInStatus);
+        }
+
+        [ChatCommand("cratetoggle")]
+        private void ToggleCrateOptIn(BasePlayer player, string command, string[] args)
+        {
+            if (args.Length == 1 && bool.TryParse(args[0], out bool optIn))
+            {
+                playerOptInStatus[player.userID] = optIn;
+                SaveOptInData();
+                player.ChatMessage($"Crate-moving feature is now {(optIn ? "enabled" : "disabled")} for you.");
+            }
+            else
+            {
+                player.ChatMessage("Usage: /cratetoggle <true|false>");
+            }
         }
 
         void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
@@ -35,21 +68,16 @@ namespace Oxide.Plugins
         {
             if (entity is PatrolHelicopter helicopter)
             {
-                if (heliKillers.TryGetValue(helicopter, out BasePlayer killer))
-                {
-                    heliKillers.Remove(helicopter);
-                }
+                heliKillers.Remove(helicopter);
             }
         }
 
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (entity == null || (entity.ShortPrefabName != "heli_crate" && entity.ShortPrefabName != "codelockedhackablecrate"))
+            if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
             {
-                return;
+                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
             }
-
-            timer.Once(0.1f, () => CheckOwnerAndMove(entity));
         }
 
         private void CheckOwnerAndMove(BaseEntity entity)
@@ -63,10 +91,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (owner == null)
-            {
-                return;
-            }
+            if (owner == null) return;
 
             Vector3 playerPosition = owner.transform.position;
             entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
@@ -76,11 +101,7 @@ namespace Oxide.Plugins
 
             timer.Once(1f, () =>
             {
-                Rigidbody rb = entity.GetComponent<Rigidbody>();
-                if (rb == null)
-                {
-                    rb = entity.gameObject.AddComponent<Rigidbody>();
-                }
+                Rigidbody rb = entity.GetComponent<Rigidbody>() ?? entity.gameObject.AddComponent<Rigidbody>();
                 rb.useGravity = true;
             });
         }
@@ -88,10 +109,15 @@ namespace Oxide.Plugins
         [ChatCommand("crates")]
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
         {
-            // Block permission check
             if (permission.UserHasPermission(player.UserIDString, PermissionBlockCommand))
             {
                 player.ChatMessage("You do not have permission to use this command.");
+                return;
+            }
+            
+            if (!playerOptInStatus.TryGetValue(player.userID, out bool isOptedIn) || !isOptedIn)
+            {
+                player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
                 return;
             }
 
@@ -142,27 +168,15 @@ namespace Oxide.Plugins
             lastCommandUsage[player.userID] = DateTime.Now;
         }
 
-        void Unload()
-        {
-            heliKillers.Clear();
-            lastCommandUsage.Clear();
-        }
-
         #region Config
 
         static Configuration config;
         public class Configuration
         {
-            [JsonProperty("Command Cooldown")]
-            public int coolDown;
+            [JsonProperty("Cooldown")]
+            public int coolDown = 10;
 
-            public static Configuration DefaultConfig()
-            {
-                return new Configuration
-                {
-                    coolDown = 10
-                };
-            }
+            public static Configuration DefaultConfig() => new Configuration { coolDown = 10 };
         }
 
         protected override void LoadConfig()
@@ -170,8 +184,7 @@ namespace Oxide.Plugins
             base.LoadConfig();
             try
             {
-                config = Config.ReadObject<Configuration>();
-                if (config == null) LoadDefaultConfig();
+                config = Config.ReadObject<Configuration>() ?? Configuration.DefaultConfig();
                 SaveConfig();
             }
             catch (Exception ex)
