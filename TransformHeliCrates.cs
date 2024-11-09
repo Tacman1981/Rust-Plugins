@@ -16,7 +16,7 @@ namespace Oxide.Plugins
         private Dictionary<ulong, DateTime> lastCommandUsage = new Dictionary<ulong, DateTime>();
         private Dictionary<ulong, bool> playerOptInStatus = new Dictionary<ulong, bool>();
         private const string PermissionBlockCommand = "transformhelicrates.block";
-        private const string dataFilePath = "TransformHeliCrates_OptInStatus";
+        private const string dataFilePath = "TransformHeliCrates/TransformHeliCrates";
 
         void Init()
         {
