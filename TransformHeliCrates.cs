@@ -72,33 +72,12 @@ namespace Oxide.Plugins
             }
         }
 
-        private void CheckOwnerAndMove(BaseEntity entity)
+        void OnEntitySpawned(BaseEntity entity)
         {
-            ulong ownerId = entity.OwnerID;
-            BasePlayer owner = BasePlayer.FindByID(ownerId);
-        
-            // Opt-in check for automatic crate transform
-            if (owner == null || !playerOptInStatus.GetValueOrDefault(ownerId, false))
+            if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
             {
-                // Player hasn't opted in, so skip moving the crate
-                return;
+                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
             }
-        
-            Vector3 playerPosition = owner.transform.position;
-            entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
-            entity.SendNetworkUpdateImmediate();
-        
-            Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
-        
-            timer.Once(1f, () =>
-            {
-                Rigidbody rb = entity.GetComponent<Rigidbody>();
-                if (rb == null)
-                {
-                    rb = entity.gameObject.AddComponent<Rigidbody>();
-                }
-                rb.useGravity = true;
-            });
         }
 
         private void CheckOwnerAndMove(BaseEntity entity)
@@ -106,13 +85,11 @@ namespace Oxide.Plugins
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
-            if (owner == null && ownerId == 0)
+            // Opt-in check for automatic crate transform
+            if (owner == null || !playerOptInStatus.GetValueOrDefault(ownerId, false))
             {
-                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
                 return;
             }
-
-            if (owner == null) return;
 
             Vector3 playerPosition = owner.transform.position;
             entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
@@ -122,7 +99,11 @@ namespace Oxide.Plugins
 
             timer.Once(1f, () =>
             {
-                Rigidbody rb = entity.GetComponent<Rigidbody>() ?? entity.gameObject.AddComponent<Rigidbody>();
+                Rigidbody rb = entity.GetComponent<Rigidbody>();
+                if (rb == null)
+                {
+                    rb = entity.gameObject.AddComponent<Rigidbody>();
+                }
                 rb.useGravity = true;
             });
         }
@@ -135,7 +116,7 @@ namespace Oxide.Plugins
                 player.ChatMessage("You do not have permission to use this command.");
                 return;
             }
-            
+
             if (!playerOptInStatus.TryGetValue(player.userID, out bool isOptedIn) || !isOptedIn)
             {
                 player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
