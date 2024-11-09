@@ -72,12 +72,33 @@ namespace Oxide.Plugins
             }
         }
 
-        void OnEntitySpawned(BaseEntity entity)
+        private void CheckOwnerAndMove(BaseEntity entity)
         {
-            if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
+            ulong ownerId = entity.OwnerID;
+            BasePlayer owner = BasePlayer.FindByID(ownerId);
+        
+            // Opt-in check for automatic crate transform
+            if (owner == null || !playerOptInStatus.GetValueOrDefault(ownerId, false))
             {
-                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
+                // Player hasn't opted in, so skip moving the crate
+                return;
             }
+        
+            Vector3 playerPosition = owner.transform.position;
+            entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
+            entity.SendNetworkUpdateImmediate();
+        
+            Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
+        
+            timer.Once(1f, () =>
+            {
+                Rigidbody rb = entity.GetComponent<Rigidbody>();
+                if (rb == null)
+                {
+                    rb = entity.gameObject.AddComponent<Rigidbody>();
+                }
+                rb.useGravity = true;
+            });
         }
 
         private void CheckOwnerAndMove(BaseEntity entity)
