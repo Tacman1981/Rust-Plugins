@@ -1,5 +1,3 @@
-//Had a lot of fun with this 1, people keep creating events that conflict with part of the code, so i have to keep adding to it
-
 using UnityEngine;
 using Rust;
 using System;
@@ -9,8 +7,8 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "2.0.3")]
-    [Description("Configurable crate buoyancy, add your own crates to config by shortname")]
+    [Info("Buoyant Crates", "Tacman", "2.0.2")]
+    [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
         #region Config
@@ -65,16 +63,16 @@ namespace Oxide.Plugins
             }
 
             // Check and set default values for other fields if they are missing
-            if (_config.DetectionRate <= 0)
+            if (_config.DetectionRate == null)
                 _config.DetectionRate = 1;
 
-            if (_config.transformY <= 0)
+            if (_config.transformY == null)
                 _config.transformY = 10;
 
-            if (_config.ShipwreckStartDelay <= 0)
+            if (_config.ShipwreckStartDelay == null)
                 _config.ShipwreckStartDelay = 5f;
 
-            if (_config.BuoyancyScale <= 0)
+            if (_config.BuoyancyScale == null)
                 _config.BuoyancyScale = 1f;
 
             // Update the config file if any changes were made
@@ -83,10 +81,9 @@ namespace Oxide.Plugins
 
         #endregion
 
-        #region Events
+        #region ShipwreckEvent
 
         private bool _isShipwreckEventActive = false;
-        private bool _isJunkyardEventActive = false;
 
         void OnShipwreckStart()
         {
@@ -95,18 +92,6 @@ namespace Oxide.Plugins
             {
                 _isShipwreckEventActive = false;
             });
-        }
-
-        void OnJunkyardEventStart()
-        {
-            _isJunkyardEventActive = true;
-            //Puts("Junkyard event started, disabling transform position");
-        }
-
-        void OnJunkyardEventEnd()
-        {
-            _isJunkyardEventActive = false;
-            //Puts("Junkyard event stopped, transform position enabled");
         }
 
         #endregion
@@ -121,7 +106,7 @@ namespace Oxide.Plugins
             }
 
             // Adjust position for heli_crate
-            if (entity.ShortPrefabName == "heli_crate" && !_isJunkyardEventActive)
+            if (entity.ShortPrefabName == "heli_crate")
             {
                 Vector3 originalPosition = entity.transform.position;
                 entity.transform.position += new Vector3(0, _config.transformY, 0);
@@ -130,7 +115,7 @@ namespace Oxide.Plugins
                     Puts($"Transformed position of {entity.ShortPrefabName} by {entity.transform.position - originalPosition}");
                 }
 
-                // Delay checking for the Rigidbody
+                // Delay checking for the Rigidbody. This allows crates spawned using F1 to fall to the ground from the set transformY setting. previously this would leave crates floating in the air after using f1 to spawn heli_crate
                 timer.Once(1f, () =>
                 {
                     Rigidbody rb = entity.GetComponent<Rigidbody>();
@@ -138,7 +123,7 @@ namespace Oxide.Plugins
                     {
                         rb = entity.gameObject.AddComponent<Rigidbody>();
                     }
-                    rb.useGravity = true; // Ensure gravity is applied
+                    rb.useGravity = true; // Ensure gravity is applied so that it really can fall down after using F! to "spawn heli_crate"
                 });
             }
 
