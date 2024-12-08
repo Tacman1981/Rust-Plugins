@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "2.0.2")]
+    [Info("Buoyant Crates", "Tacman", "2.0.3")]
     [Description("Makes helicopter and code locked hackable crates buoyant")]
     class BuoyantCrates : RustPlugin
     {
