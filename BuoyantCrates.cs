@@ -4,13 +4,18 @@ using System;
 using Oxide.Core;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Oxide.Core.Plugins;
+using Oxide.Core.Libraries;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "2.0.3")]
-    [Description("Makes helicopter and code locked hackable crates buoyant")]
+    [Info("Buoyant Crates", "Tacman", "2.1.0")]
+    [Description("Configurable crate buoyancy, add your own crates to config by shortname")]
     class BuoyantCrates : RustPlugin
     {
+
+        [PluginReference] Plugin Shipwreck;
+
         #region Config
 
         public PluginConfig _config;
@@ -19,80 +24,63 @@ namespace Oxide.Plugins
         {
             [JsonProperty("How long after the crate lands in water does it apply buoyancy (lower is faster)")]
             public int DetectionRate = 1;
-            [JsonProperty("Transform position of helicopter crates upwards by this much")]
+
+            [JsonProperty("Transform position of helicopter crates upwards by this much (set to 0 for no transform)")]
             public int transformY = 10;
-            [JsonProperty("Delay after Shipwreck event starts (in seconds) until the floating crate functionality returns")]
-            public float ShipwreckStartDelay = 5f;
-            [JsonProperty("Buoyancy Scale (set this too high and it can have undesirable results)")]
+
+            [JsonProperty("Buoyancy Scale (recommended to use between 0.7 and 2.0, any higher and it will be a trampoline)")]
             public float BuoyancyScale = 1f;
-            [JsonProperty("debug")]
+
+            [JsonProperty("Debug Mode")]
             public bool debugMode = false;
-            [JsonProperty("Crates which will float (Uses Equals so shortname must be exact)")]
+
+            [JsonProperty("Crates which will float (list by crate name)")]
             public List<string> CrateList = new List<string>();
         }
-        #endregion
-
-        #region Oxide
 
         protected override void LoadDefaultConfig()
         {
-            // Set default config values directly
             _config = new PluginConfig
             {
                 DetectionRate = 1,
                 transformY = 10,
-                ShipwreckStartDelay = 5f,
                 BuoyancyScale = 1f,
                 debugMode = false,
                 CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" }
             };
-
-            // Write the default config to the file
             Config.WriteObject(_config, true);
         }
 
         void Init()
         {
-            // Load the config
-            _config = Config.ReadObject<PluginConfig>();
+            Plugin shipwreckPlugin = plugins.Find("Shipwreck");
 
-            // Ensure that the config has the required fields
-            if (_config.CrateList == null || _config.CrateList.Count == 0)
+            if (shipwreckPlugin != null)
             {
-                _config.CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" };
+                Puts("Shipwreck plugin found. Setting up buoyancy bypass for Shipwreck crates");
+            }
+            else
+            {
+                Puts("Shipwreck plugin not found!");
             }
 
-            // Check and set default values for other fields if they are missing
+            _config = Config.ReadObject<PluginConfig>();
+
+            if (_config.CrateList == null || _config.CrateList.Count == 0)
+                _config.CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" };
+
             if (_config.DetectionRate == null)
                 _config.DetectionRate = 1;
 
             if (_config.transformY == null)
                 _config.transformY = 10;
 
-            if (_config.ShipwreckStartDelay == null)
-                _config.ShipwreckStartDelay = 5f;
+            if (_config.BuoyancyScale == 0)
+                _config.BuoyancyScale = 0.8f;
 
-            if (_config.BuoyancyScale == null)
-                _config.BuoyancyScale = 1f;
-
-            // Update the config file if any changes were made
             Config.WriteObject(_config, true);
         }
 
-        #endregion
-
-        #region ShipwreckEvent
-
-        private bool _isShipwreckEventActive = false;
-
-        void OnShipwreckStart()
-        {
-            _isShipwreckEventActive = true;
-            timer.Once(_config.ShipwreckStartDelay, () =>
-            {
-                _isShipwreckEventActive = false;
-            });
-        }
 
         #endregion
 
@@ -100,37 +88,69 @@ namespace Oxide.Plugins
 
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (_isShipwreckEventActive || entity == null || !_config.CrateList.Contains(entity.ShortPrefabName))
+            if (entity == null || !(entity is StorageContainer crate) || !_config.CrateList.Contains(entity.ShortPrefabName))
             {
                 return;
             }
 
-            // Adjust position for heli_crate
-            if (entity.ShortPrefabName == "heli_crate")
+            Plugin shipwreckPlugin = plugins.Find("Shipwreck");
+
+            NextTick(() =>
             {
-                Vector3 originalPosition = entity.transform.position;
-                entity.transform.position += new Vector3(0, _config.transformY, 0);
-                if (_config.debugMode)
+                if (shipwreckPlugin != null)
                 {
-                    Puts($"Transformed position of {entity.ShortPrefabName} by {entity.transform.position - originalPosition}");
+                    if ((bool)shipwreckPlugin.Call("IsShipwreckCrate", crate))
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    if (_config.debugMode)
+                    {
+                        Puts("This is not a Shipwreck crate, applying buoyancy.");
+                    }
                 }
 
-                // Delay checking for the Rigidbody. This allows crates spawned using F1 to fall to the ground from the set transformY setting. previously this would leave crates floating in the air after using f1 to spawn heli_crate
-                timer.Once(1f, () =>
+                if (_config.CrateList.Contains(crate.ShortPrefabName))
                 {
-                    Rigidbody rb = entity.GetComponent<Rigidbody>();
-                    if (rb == null)
+                    if (entity.PrefabName.Contains("heli_crate"))
                     {
-                        rb = entity.gameObject.AddComponent<Rigidbody>();
+                        Vector3 originalPosition = crate.transform.position;
+                        crate.transform.position += new Vector3(0, _config.transformY, 0);
+                        if (_config.debugMode)
+                        {
+                            Puts($"Transformed position of {crate.ShortPrefabName} by {crate.transform.position - originalPosition}");
+                        }
                     }
-                    rb.useGravity = true; // Ensure gravity is applied so that it really can fall down after using F! to "spawn heli_crate"
-                });
-            }
 
-            // Existing buoyancy logic for other entities
-            MakeBuoyant buoyancy = entity.gameObject.AddComponent<MakeBuoyant>();
-            buoyancy.buoyancyScale = _config.BuoyancyScale;
-            buoyancy.detectionRate = _config.DetectionRate;
+                    NextTick(() =>
+                    {
+                        Rigidbody rb = crate.GetComponent<Rigidbody>();
+                        if (rb == null)
+                        {
+                            rb = crate.gameObject.AddComponent<Rigidbody>();
+                        }
+
+                        if (rb == null)
+                        {
+                            Puts("Rigidbody could not be added to crate.");
+                            return;
+                        }
+
+                        rb.useGravity = true;
+                        rb.collisionDetectionMode = (CollisionDetectionMode)2;
+                        rb.mass = 2f;
+                        rb.interpolation = (RigidbodyInterpolation)1;
+                        rb.angularVelocity = Vector3Ex.Range(-1.75f, 1.75f);
+                        rb.drag = 0.5f * rb.mass;
+                        rb.angularDrag = 0.2f * (rb.mass / 5f);
+                        MakeBuoyant buoyancy = crate.gameObject.AddComponent<MakeBuoyant>();
+                        buoyancy.buoyancyScale = _config.BuoyancyScale;
+                        buoyancy.detectionRate = _config.DetectionRate;
+                    });
+                }
+            });
         }
 
         #endregion
