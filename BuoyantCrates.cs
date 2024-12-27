@@ -180,7 +180,7 @@ namespace Oxide.Plugins
                 }
                 catch (Exception ex)
                 {
-                    PrintError($"Error while processing crate {entity.ShortPrefabName}: {ex.Message}");
+                    Puts($"{entity.ShortPrefabName} was not processed properly, nothing to worry about as the plugin will continue working normally. Probably NRE on some component.");
                 }
             });
         }
