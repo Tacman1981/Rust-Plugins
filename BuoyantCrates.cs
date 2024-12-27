@@ -9,7 +9,7 @@ using Oxide.Core.Libraries;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "2.1.0")]
+    [Info("Buoyant Crates", "Tacman", "2.1.3")]
     [Description("Configurable crate buoyancy, add your own crates to config by shortname")]
     class BuoyantCrates : RustPlugin
     {
@@ -24,9 +24,6 @@ namespace Oxide.Plugins
         {
             [JsonProperty("How long after the crate lands in water does it apply buoyancy (lower is faster)")]
             public int DetectionRate = 1;
-
-            [JsonProperty("Transform position of helicopter crates upwards by this much (set to 0 for no transform)")]
-            public int transformY = 10;
 
             [JsonProperty("Buoyancy Scale (recommended to use between 0.7 and 2.0, any higher and it will be a trampoline)")]
             public float BuoyancyScale = 1f;
@@ -43,7 +40,6 @@ namespace Oxide.Plugins
             _config = new PluginConfig
             {
                 DetectionRate = 1,
-                transformY = 10,
                 BuoyancyScale = 1f,
                 debugMode = false,
                 CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" }
@@ -54,6 +50,17 @@ namespace Oxide.Plugins
         void Init()
         {
             Plugin shipwreckPlugin = plugins.Find("Shipwreck");
+            Plugin convoyPlugin = plugins.Find("Convoy");
+            Plugin trainEvent = plugins.Find("ArmoredTrain");
+
+            if (trainEvent != null)
+            {
+                Puts("ArmoredTrain event plugin found, ignoring drag and gravity for train event.");
+            }
+            else
+            {
+                //Puts("ArmoredTrain plugin not found!");
+            }
 
             if (shipwreckPlugin != null)
             {
@@ -61,7 +68,16 @@ namespace Oxide.Plugins
             }
             else
             {
-                Puts("Shipwreck plugin not found!");
+                //Puts("Shipwreck plugin not found!");
+            }
+
+            if (convoyPlugin != null)
+            {
+                Puts("Convoy plugin found. Ignoring drag and gravity for Convoy crates.");
+            }
+            else
+            {
+                //Puts("Convoy plugin not found!");
             }
 
             _config = Config.ReadObject<PluginConfig>();
@@ -69,18 +85,14 @@ namespace Oxide.Plugins
             if (_config.CrateList == null || _config.CrateList.Count == 0)
                 _config.CrateList = new List<string> { "heli_crate", "codelockedhackablecrate", "supply_drop" };
 
-            if (_config.DetectionRate == null)
+            if (_config.DetectionRate == 0)
                 _config.DetectionRate = 1;
 
-            if (_config.transformY == null)
-                _config.transformY = 10;
-
             if (_config.BuoyancyScale == 0)
-                _config.BuoyancyScale = 0.8f;
+                _config.BuoyancyScale = 1f;
 
             Config.WriteObject(_config, true);
         }
-
 
         #endregion
 
@@ -94,61 +106,81 @@ namespace Oxide.Plugins
             }
 
             Plugin shipwreckPlugin = plugins.Find("Shipwreck");
+            Plugin convoyPlugin = plugins.Find("Convoy");
+            Plugin armoredTrainPlugin = plugins.Find("ArmoredTrain");
 
             NextTick(() =>
             {
-                if (shipwreckPlugin != null)
+                try
                 {
-                    if ((bool)shipwreckPlugin.Call("IsShipwreckCrate", crate))
+                    if (armoredTrainPlugin != null && (bool)armoredTrainPlugin.Call("IsTrainCrate", crate.net.ID.Value))
                     {
-                        return;
-                    }
-                }
-                else
-                {
-                    if (_config.debugMode)
-                    {
-                        Puts("This is not a Shipwreck crate, applying buoyancy.");
-                    }
-                }
-
-                if (_config.CrateList.Contains(crate.ShortPrefabName))
-                {
-                    if (entity.PrefabName.Contains("heli_crate"))
-                    {
-                        Vector3 originalPosition = crate.transform.position;
-                        crate.transform.position += new Vector3(0, _config.transformY, 0);
                         if (_config.debugMode)
                         {
-                            Puts($"Transformed position of {crate.ShortPrefabName} by {crate.transform.position - originalPosition}");
+                            Puts($"ArmoredTrain crate detected: {crate.ShortPrefabName}");
                         }
+                        return;
                     }
 
-                    NextTick(() =>
+                    if (convoyPlugin != null && (bool)convoyPlugin.Call("IsConvoyCrate", crate))
                     {
-                        Rigidbody rb = crate.GetComponent<Rigidbody>();
-                        if (rb == null)
+                        if (_config.debugMode)
                         {
-                            rb = crate.gameObject.AddComponent<Rigidbody>();
+                            Puts($"Convoy crate detected: {crate.ShortPrefabName}");
                         }
+                        return;
+                    }
 
-                        if (rb == null)
+                    if (shipwreckPlugin != null && (bool)shipwreckPlugin.Call("IsShipwreckCrate", crate))
+                    {
+                        if (_config.debugMode)
                         {
-                            Puts("Rigidbody could not be added to crate.");
-                            return;
+                            Puts($"Shipwreck crate detected: {crate.ShortPrefabName}");
                         }
+                        return;
+                    }
 
+                    // Add Rigidbody and Buoyancy
+                    Rigidbody rb = crate.GetComponent<Rigidbody>() ?? crate.gameObject.AddComponent<Rigidbody>();
+                    if (rb == null)
+                    {
+                        Puts($"Failed to add Rigidbody to crate: {crate.ShortPrefabName}");
+                        return;
+                    }
+
+
+                    if (_config.CrateList.Contains("heli_crate") && crate.ShortPrefabName.Contains("heli_crate"))
+                    {
                         rb.useGravity = true;
-                        rb.collisionDetectionMode = (CollisionDetectionMode)2;
+                        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+
                         rb.mass = 2f;
-                        rb.interpolation = (RigidbodyInterpolation)1;
-                        rb.angularVelocity = Vector3Ex.Range(-1.75f, 1.75f);
+                        rb.interpolation = RigidbodyInterpolation.Interpolate;
+                        rb.angularVelocity = Vector3Ex.Range(-2.75f, 2.75f);
                         rb.drag = 0.5f * rb.mass;
-                        rb.angularDrag = 0.2f * (rb.mass / 5f);
-                        MakeBuoyant buoyancy = crate.gameObject.AddComponent<MakeBuoyant>();
-                        buoyancy.buoyancyScale = _config.BuoyancyScale;
-                        buoyancy.detectionRate = _config.DetectionRate;
-                    });
+                        if (_config.debugMode)
+                        {
+                            Puts("Buoyancy applied to helicopter crate!");
+                        }
+                    }
+                    
+                    if ((_config.CrateList.Contains("supply_drop") && crate.ShortPrefabName.Contains("supply_drop")) || (_config.CrateList.Contains("codelockedhackablecrate") && crate.ShortPrefabName.Contains("codelockedhackablecrate")))
+                    {
+                        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationY;
+                    }
+
+                    MakeBuoyant buoyancy = crate.gameObject.AddComponent<MakeBuoyant>();
+                    buoyancy.buoyancyScale = _config.BuoyancyScale;
+                    buoyancy.detectionRate = _config.DetectionRate;
+
+                    if (_config.debugMode)
+                    {
+                        Puts($"Buoyancy applied to crate: {crate.ShortPrefabName}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    PrintError($"Error while processing crate {entity.ShortPrefabName}: {ex.Message}");
                 }
             });
         }
