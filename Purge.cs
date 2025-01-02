@@ -25,7 +25,7 @@ namespace Oxide.Plugins
             LoadConfigValues();
         }
 
-        protected override void LoadDefaultConfig() // Add more plugins here or add them through the actual config file. Case sensitive
+        protected override void LoadDefaultConfig()
         {
             Config["PluginsToUnload"] = new List<string>
             {
@@ -76,26 +76,29 @@ namespace Oxide.Plugins
 
         private void ShowPurgeUI()
         {
+            // Create a container for the UI elements
             var elements = new CuiElementContainer();
-        
-            var panel = new CuiPanel
+            
+            // Create a completely non-blocking button for the panel
+            var panel = new CuiButton
             {
-                Image =
+                Button =
                 {
-                    Color = "0 0 0 0"
+                    Command = string.Empty,  // No commands executed
+                    Color = "0 0 0 0",       // Fully transparent button background
                 },
                 RectTransform =
                 {
-                    AnchorMin = "0.4 -0.5",
-                    AnchorMax = "0.6 0.85"
+                    AnchorMin = "0.45 0.85", // Smaller panel placed near the top-middle
+                    AnchorMax = "0.55 0.95"
                 },
-                CursorEnabled = false
+                Text = { Text = string.Empty } // No visible text on the button
             };
-        
-            string panelName = "PurgePanel";
-        
-            elements.Add(panel, "Hud", panelName);
-        
+            
+            // Add the panel to the container (as a "non-blocking" base element)
+            elements.Add(panel, "Hud", "PurgePanel");
+            
+            // Add a visible label for the notification text
             var label = new CuiLabel
             {
                 RectTransform =
@@ -105,15 +108,17 @@ namespace Oxide.Plugins
                 },
                 Text =
                 {
-                    Text = "Purge Active!! PVP Enabled!!!",
-                    FontSize = 12,
-                    Align = TextAnchor.MiddleCenter,
-                    Color = "1 0 0 1"
+                    Text = "Purge Active!! PVP Enabled!!!",  // Notification text
+                    FontSize = 12,  // Font size
+                    Align = TextAnchor.MiddleCenter,  // Center-align text
+                    Color = "1 0 0 1"  // Red text
                 }
             };
-        
-            elements.Add(label, panelName);
-        
+            
+            // Add the label to the "PurgePanel"
+            elements.Add(label, "PurgePanel");
+            
+            // Add the UI to all active players
             foreach (var player in BasePlayer.activePlayerList)
             {
                 CuiHelper.AddUi(player, elements);
@@ -127,18 +132,20 @@ namespace Oxide.Plugins
             ShowPurgeUI();
             }
         }
-        private void OnPlayerDisconnected(BasePlayer player)
-        {
-            CuiHelper.DestroyUi(player, "PurgePanel");
-        }
+                // Optional: Clean up the UI when the purge ends or when players disconnect
+                private void OnPlayerDisconnected(BasePlayer player)
+                {
+                    CuiHelper.DestroyUi(player, "PurgePanel");
+                }
         
-        private void Unload()
+                private void Unload()
         {
+            // This will clean up the UI for all active players
             foreach (var player in BasePlayer.activePlayerList)
             {
                 CuiHelper.DestroyUi(player, "PurgePanel");
                 _isPurgeActive = false;
             }
         }
-    }
+}
 }
