@@ -1,3 +1,9 @@
+//████████╗ █████╗  ██████╗███╗   ███╗  █████╗ ███╗   ██╗
+//╚══██╔══╝██╔══██╗██╔════╝████╗ ████║ ██╔══██╗████╗  ██║
+//   ██║   ███████║██║     ██╔████╔██║ ███████║██╔██╗ ██║
+//   ██║   ██╔══██║██║     ██║╚██╔╝██║ ██╔══██║██║╚██╗██║
+//   ██║   ██║  ██║╚██████╗██║ ╚═╝ ██║ ██║  ██║██║ ╚████║
+//   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝ ╚═╝  ╚═╝╚═╝  ╚═══╝
 using UnityEngine;
 using Rust;
 using System;
@@ -6,6 +12,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using Oxide.Core.Plugins;
 using Oxide.Core.Libraries;
+using System.Numerics;
 
 namespace Oxide.Plugins
 {
@@ -109,10 +116,23 @@ namespace Oxide.Plugins
             Plugin convoyPlugin = plugins.Find("Convoy");
             Plugin armoredTrainPlugin = plugins.Find("ArmoredTrain");
 
+            // Delay the buoyancy application until the next tick
             NextTick(() =>
             {
                 try
                 {
+                    // Check if the crate still doesn't have a parent
+                    if (crate.transform.parent != null)
+                    {
+                        var parentEntity = crate.transform.parent.gameObject;
+                        if (_config.debugMode)
+                        {
+                            Puts($"Crate {crate.ShortPrefabName} is parented to {parentEntity.name}, skipping buoyancy.");
+                        }
+                        return; // Skip buoyancy if the crate is parented
+                    }
+
+                    // Check for specific plugin-related crates
                     if (armoredTrainPlugin != null && (bool)armoredTrainPlugin.Call("IsTrainCrate", crate.net.ID.Value))
                     {
                         if (_config.debugMode)
@@ -140,7 +160,7 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    // Add Rigidbody and Buoyancy
+                    // Add Rigidbody and Buoyancy if the crate is not parented
                     Rigidbody rb = crate.GetComponent<Rigidbody>() ?? crate.gameObject.AddComponent<Rigidbody>();
                     if (rb == null)
                     {
@@ -148,27 +168,27 @@ namespace Oxide.Plugins
                         return;
                     }
 
-
                     if (_config.CrateList.Contains("heli_crate") && crate.ShortPrefabName.Contains("heli_crate"))
                     {
                         rb.useGravity = true;
                         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-
                         rb.mass = 2f;
                         rb.interpolation = RigidbodyInterpolation.Interpolate;
                         rb.angularVelocity = Vector3Ex.Range(-2.75f, 2.75f);
                         rb.drag = 0.5f * rb.mass;
+
                         if (_config.debugMode)
                         {
                             Puts("Buoyancy applied to helicopter crate!");
                         }
                     }
-                    
+
                     if ((_config.CrateList.Contains("supply_drop") && crate.ShortPrefabName.Contains("supply_drop")) || (_config.CrateList.Contains("codelockedhackablecrate") && crate.ShortPrefabName.Contains("codelockedhackablecrate")))
                     {
                         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationY;
                     }
 
+                    // Add buoyancy component
                     MakeBuoyant buoyancy = crate.gameObject.AddComponent<MakeBuoyant>();
                     buoyancy.buoyancyScale = _config.BuoyancyScale;
                     buoyancy.detectionRate = _config.DetectionRate;
@@ -235,8 +255,8 @@ namespace Oxide.Plugins
                 Buoyancy buoyancy = entity.gameObject.AddComponent<Buoyancy>();
                 buoyancy.buoyancyScale = buoyancyScale;
                 buoyancy.rigidBody = entity.gameObject.GetComponent<Rigidbody>();
-                buoyancy.rigidBody.velocity = Vector3.zero;
-                buoyancy.rigidBody.angularVelocity = Vector3.zero;
+                buoyancy.rigidBody.velocity = UnityEngine.Vector3.zero;
+                buoyancy.rigidBody.angularVelocity = UnityEngine.Vector3.zero;
                 buoyancy.rigidBody.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezeRotationX;
                 buoyancy.SavePointData(true);
             }
