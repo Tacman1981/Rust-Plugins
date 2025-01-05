@@ -1,20 +1,18 @@
 using Oxide.Core;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Command To Invite", "Tacman", "1.5.0")]
+    [Info("Command To Invite", "Tacman", "1.6.0")]
     [Description("Allows players to send team invites to other players")]
     class CommandToInvite : RustPlugin
     {
         private void SendInvite(BasePlayer sender, BasePlayer target)
         {
             RelationshipManager.PlayerTeam playerTeam = sender.Team;
-            //Create a team if the sender is not already part of 1
+            // Create a team if the sender is not already part of one
             if (playerTeam == null)
             {
                 if (!TryCreateTeam(sender))
@@ -25,37 +23,37 @@ namespace Oxide.Plugins
 
                 playerTeam = sender.Team;
             }
-            //Check if team is full
+            // Check if team is full
             if (playerTeam.members.Count >= 8)
             {
                 sender.ChatMessage("Your team is already full.");
                 return;
             }
-            //Check if sender is team leader
+            // Check if sender is team leader
             if (!playerTeam.GetLeader().Equals(sender))
             {
                 sender.ChatMessage("You are not the team leader.");
                 return;
             }
-            //Check for valid players
+            // Check for valid players
             if (target == null)
             {
                 sender.ChatMessage("Player not found");
                 return;
             }
-            //Check if player is inviting self
+            // Check if player is inviting self
             if (target == sender)
             {
-                sender.ChatMessage("You can not invite yourself to team");
+                sender.ChatMessage("You cannot invite yourself to the team");
             }
-            //Check if player is already in inviting team
+            // Check if player is already in the inviting team
             RelationshipManager.PlayerTeam targetTeam = target.Team;
             if (targetTeam != null && targetTeam == playerTeam)
             {
                 sender.ChatMessage($"{target.displayName} is already in your team.");
                 return;
             }
-            //Check if player is already in another team
+            // Check if player is already in another team
             if (targetTeam != null)
             {
                 sender.ChatMessage($"{target.displayName} is already in a team.");
@@ -82,7 +80,7 @@ namespace Oxide.Plugins
             return true;
         }
 
-
+        // /invite command for sending team invites
         [ChatCommand("invite")]
         private void InviteCommand(BasePlayer player, string command, string[] args)
         {
@@ -104,6 +102,53 @@ namespace Oxide.Plugins
             }
             else { SendInvite(player, players[0]); }
         }
+
+        // /leaveteam command for leaving a team
+        [ChatCommand("leaveteam")]
+        private void LeaveTeamCommand(BasePlayer player, string command, string[] args)
+        {
+            if (player.currentTeam == 0UL)
+            {
+                player.ChatMessage("You are not in a team.");
+                return;
+            }
+
+            RelationshipManager.PlayerTeam playerTeam = player.Team;
+            if (playerTeam != null && playerTeam.GetLeader() == player)
+            {
+                // Prevent team leader from leaving directly, handle disbanding first
+                player.ChatMessage("You have left the team");
+                playerTeam.RemovePlayer(player.userID);
+                player.ClearTeam();
+            }
+
+            // Remove the player from the team and clear their team
+            if (playerTeam != null && playerTeam.GetLeader() != player)
+            {
+                playerTeam.RemovePlayer(player.userID);
+                player.ClearTeam();
+                player.ChatMessage("You have left the team.");
+            }
+        }
+
+        // Intercepting the team leave action (BLOCK IN-GAME BUTTON ACTION)
+        private object OnTeamLeave(RelationshipManager.PlayerTeam team, BasePlayer player)
+        {
+            // Block leave action if player is not the leader
+            if (team.GetLeader() != player)
+            {
+                player.ChatMessage("To leave your team, use the /leaveteam command.");
+                return true; // Returning true blocks the leave action via the in-game button
+            }
+
+            // If the player is the team leader, prevent leaving until they disband the team
+            if (team.GetLeader() == player)
+            {
+                player.ChatMessage("Please use /leaveteam instead");
+                return true; // Block the leave action as the team leader cannot leave with members
+            }
+
+            return null; // Allow the team leave action to proceed if all conditions are met
+        }
     }
 }
-
