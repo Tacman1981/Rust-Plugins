@@ -1,4 +1,4 @@
-﻿//████████╗ █████╗  ██████╗███╗   ███╗  █████╗ ███╗   ██╗
+//████████╗ █████╗  ██████╗███╗   ███╗  █████╗ ███╗   ██╗
 //╚══██╔══╝██╔══██╗██╔════╝████╗ ████║ ██╔══██╗████╗  ██║
 //   ██║   ███████║██║     ██╔████╔██║ ███████║██╔██╗ ██║
 //   ██║   ██╔══██║██║     ██║╚██╔╝██║ ██╔══██║██║╚██╗██║
@@ -11,15 +11,11 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Team Handler", "Tacman", "1.6.0")]
+    [Info("Team Handler", "Tacman", "1.0.0")]
     [Description("Manages team creation and desctruction using commands")]
     class TeamHandler : RustPlugin
     {
-        private object OnTeamCreate(BasePlayer player)
-        {
-            player.ChatMessage("You cannot create a team directly. Please use the /invite command to invite players to your team.");
-            return true;
-        }
+        #region Helper Methods
         private void SendInvite(BasePlayer sender, BasePlayer target)
         {
             RelationshipManager.PlayerTeam playerTeam = sender.Team;
@@ -83,7 +79,9 @@ namespace Oxide.Plugins
             playerTeam.AddPlayer(player);
             return true;
         }
+        #endregion
 
+        #region Commands
         [ChatCommand("invite")]
         private void InviteCommand(BasePlayer player, string command, string[] args)
         {
@@ -107,7 +105,10 @@ namespace Oxide.Plugins
                     return; 
                 }
             }
-            else { SendInvite(player, players[0]); }
+            else
+            {
+                SendInvite(player, players[0]);
+            }
         }
 
         [ChatCommand("leaveteam")]
@@ -190,10 +191,17 @@ namespace Oxide.Plugins
                 player.ChatMessage("You must be the team leader to kick a player.");
             }
         }
+        #endregion
 
+        #region Hooks
+        private object OnTeamCreate(BasePlayer player)
+        {
+            player.ChatMessage("You cannot create a team directly. Please use the /invite command to invite players to your team.");
+            return true;
+        }
         private object OnTeamInvite(BasePlayer inviter, BasePlayer target)
         {
-            inviter.ChatMessage($"You can not invite the player this way, please use /invite {target}");
+            inviter.ChatMessage($"You can not invite the player this way, please use /invite {target.displayName}, partial names also work");
             return false;
         }
 
@@ -231,5 +239,6 @@ namespace Oxide.Plugins
 
             return null;
         }
+        #endregion
     }
 }
