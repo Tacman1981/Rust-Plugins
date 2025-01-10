@@ -12,7 +12,7 @@ using UnityEngine;
 namespace Oxide.Plugins
 {
     [Info("Team Handler", "Tacman", "1.0.0")]
-    [Description("Manages team creation and desctruction using commands")]
+    [Description("Handle all team management through commands")]
     class TeamHandler : RustPlugin
     {
         #region Helper Methods
@@ -99,10 +99,10 @@ namespace Oxide.Plugins
             else if (players.Count > 1)
             {
                 var distinctPlayers = players.Select(x => x.displayName).Distinct().ToList();
-                if (distinctPlayers.Count > 1) 
-                { 
-                    player.ChatMessage($"Multiple players found. Please refine your search criteria."); 
-                    return; 
+                if (distinctPlayers.Count > 1)
+                {
+                    player.ChatMessage($"Multiple players found. Please refine your search criteria.");
+                    return;
                 }
             }
             else
@@ -199,6 +199,7 @@ namespace Oxide.Plugins
             player.ChatMessage("You cannot create a team directly. Please use the /invite command to invite players to your team.");
             return true;
         }
+
         private object OnTeamInvite(BasePlayer inviter, BasePlayer target)
         {
             inviter.ChatMessage($"You can not invite the player this way, please use /invite {target.displayName}, partial names also work");
@@ -238,6 +239,11 @@ namespace Oxide.Plugins
             }
 
             return null;
+        }
+
+        void Init()
+        {
+            Puts("Manages teams with commands, no more accidental leaving by misclick or accidentally inviting someone you dont want in team. More features to come.");
         }
         #endregion
     }
