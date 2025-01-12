@@ -24,15 +24,15 @@ namespace Oxide.Plugins
     public class CompostStacks : RustPlugin
     {
         private bool CompostEntireStack = true;
-        private const string permissionName = "compoststacks.use"; // Permission name
+        private const string permissionName = "compoststacks.use";
 
-        private Dictionary<ulong, bool> composterData = new Dictionary<ulong, bool>(); // Stores OwnerID and CompostEntireStack status
+        private Dictionary<ulong, bool> composterData = new Dictionary<ulong, bool>();
         private const string dataFileName = "CompostStacksData";
 
         private void OnServerInitialized()
         {
             permission.RegisterPermission(permissionName, this);
-            UpdateComposters(); // Update all composters based on loaded data
+            UpdateComposters();
         }
 
         private void OnEntitySpawned(BaseNetworkable entity)
@@ -47,7 +47,6 @@ namespace Oxide.Plugins
                     bool hasPermission = HasPermission(ownerPlayer);
                     composter.CompostEntireStack = hasPermission ? CompostEntireStack : false;
 
-                    // Store the status in the dictionary
                     composterData[ownerID] = composter.CompostEntireStack;
                 }
                 else
@@ -64,7 +63,6 @@ namespace Oxide.Plugins
         {
             if (composterData != null && composterData.Count > 0)
             {
-                // Update existing composters from the data file
                 foreach (var entry in composterData)
                 {
                     IPlayer ownerPlayer = covalence.Players.FindPlayerById(entry.Key.ToString());
@@ -80,7 +78,6 @@ namespace Oxide.Plugins
             }
             else
             {
-                // Fallback: Iterate through all composters if data is not loaded
                 foreach (Composter composter in BaseNetworkable.serverEntities.Where(x => x is Composter))
                 {
                     ulong ownerID = composter.OwnerID;
@@ -91,7 +88,6 @@ namespace Oxide.Plugins
                         bool hasPermission = HasPermission(ownerPlayer);
                         composter.CompostEntireStack = hasPermission ? CompostEntireStack : false;
 
-                        // Store the status in the dictionary
                         composterData[ownerID] = composter.CompostEntireStack;
                     }
                 }
@@ -178,3 +174,4 @@ namespace Oxide.Plugins
         #endregion
     }
 }
+
