@@ -6,6 +6,9 @@ using Oxide.Core.Libraries.Covalence;
 using Rust;
 using UnityEngine;
 using Oxide.Game.Rust.Cui;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Security;
 
 namespace Oxide.Plugins
 {
@@ -60,6 +63,13 @@ namespace Oxide.Plugins
                 }
             }
 
+            if (_pluginsToUnload == null)
+            {
+                Puts("Plugins to unload field is empty, nothing has been unloaded");
+                player.Reply("There are no plugins set to unload, is this intentional?");
+                return;
+            }
+
             foreach (string pluginName in _pluginsToUnload)
             {
                 string consoleCmd = $"o.unload {pluginName}";
@@ -78,7 +88,7 @@ namespace Oxide.Plugins
         {
             // Create a container for the UI elements
             var elements = new CuiElementContainer();
-            
+
             // Create a completely non-blocking button for the panel
             var panel = new CuiButton
             {
@@ -94,10 +104,10 @@ namespace Oxide.Plugins
                 },
                 Text = { Text = string.Empty } // No visible text on the button
             };
-            
+
             // Add the panel to the container (as a "non-blocking" base element)
             elements.Add(panel, "Hud", "PurgePanel");
-            
+
             // Add a visible label for the notification text
             var label = new CuiLabel
             {
@@ -114,31 +124,31 @@ namespace Oxide.Plugins
                     Color = "1 0 0 1"  // Red text
                 }
             };
-            
+
             // Add the label to the "PurgePanel"
             elements.Add(label, "PurgePanel");
-            
+
             // Add the UI to all active players
             foreach (var player in BasePlayer.activePlayerList)
             {
                 CuiHelper.AddUi(player, elements);
             }
         }
-        
+
         private void OnPlayerConnected(BasePlayer player)
         {
             if (player != null && _isPurgeActive)
             {
-            ShowPurgeUI();
+                ShowPurgeUI();
             }
         }
-                // Optional: Clean up the UI when the purge ends or when players disconnect
-                private void OnPlayerDisconnected(BasePlayer player)
-                {
-                    CuiHelper.DestroyUi(player, "PurgePanel");
-                }
-        
-                private void Unload()
+        // Optional: Clean up the UI when the purge ends or when players disconnect
+        private void OnPlayerDisconnected(BasePlayer player)
+        {
+            CuiHelper.DestroyUi(player, "PurgePanel");
+        }
+
+        private void Unload()
         {
             // This will clean up the UI for all active players
             foreach (var player in BasePlayer.activePlayerList)
@@ -147,5 +157,5 @@ namespace Oxide.Plugins
                 _isPurgeActive = false;
             }
         }
-}
+    }
 }
