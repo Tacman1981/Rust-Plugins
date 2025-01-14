@@ -9,7 +9,7 @@ using Oxide.Game.Rust.Cui;
 
 namespace Oxide.Plugins
 {
-    [Info("Purge", "Tacman", "0.0.4")]
+    [Info("Purge", "Tacman", "0.0.5")]
     [Description("A plugin to unload specified plugins")]
     public class Purge : CovalencePlugin
     {
