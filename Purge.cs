@@ -6,9 +6,6 @@ using Oxide.Core.Libraries.Covalence;
 using Rust;
 using UnityEngine;
 using Oxide.Game.Rust.Cui;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Security;
 
 namespace Oxide.Plugins
 {
@@ -86,29 +83,25 @@ namespace Oxide.Plugins
 
         private void ShowPurgeUI()
         {
-            // Create a container for the UI elements
             var elements = new CuiElementContainer();
 
-            // Create a completely non-blocking button for the panel
             var panel = new CuiButton
             {
                 Button =
                 {
-                    Command = string.Empty,  // No commands executed
-                    Color = "0 0 0 0",       // Fully transparent button background
+                    Command = string.Empty,
+                    Color = "0 0 0 0",
                 },
                 RectTransform =
                 {
-                    AnchorMin = "0.45 0.85", // Smaller panel placed near the top-middle
+                    AnchorMin = "0.45 0.85",
                     AnchorMax = "0.55 0.95"
                 },
-                Text = { Text = string.Empty } // No visible text on the button
+                Text = { Text = string.Empty }
             };
 
-            // Add the panel to the container (as a "non-blocking" base element)
             elements.Add(panel, "Hud", "PurgePanel");
 
-            // Add a visible label for the notification text
             var label = new CuiLabel
             {
                 RectTransform =
@@ -118,17 +111,15 @@ namespace Oxide.Plugins
                 },
                 Text =
                 {
-                    Text = "Purge Active!! PVP Enabled!!!",  // Notification text
-                    FontSize = 12,  // Font size
-                    Align = TextAnchor.MiddleCenter,  // Center-align text
-                    Color = "1 0 0 1"  // Red text
+                    Text = "Purge Active!! PVP Enabled!!!",
+                    FontSize = 12,
+                    Align = TextAnchor.MiddleCenter,
+                    Color = "1 0 0 1"
                 }
             };
 
-            // Add the label to the "PurgePanel"
             elements.Add(label, "PurgePanel");
 
-            // Add the UI to all active players
             foreach (var player in BasePlayer.activePlayerList)
             {
                 CuiHelper.AddUi(player, elements);
@@ -142,7 +133,7 @@ namespace Oxide.Plugins
                 ShowPurgeUI();
             }
         }
-        // Optional: Clean up the UI when the purge ends or when players disconnect
+
         private void OnPlayerDisconnected(BasePlayer player)
         {
             CuiHelper.DestroyUi(player, "PurgePanel");
@@ -150,7 +141,6 @@ namespace Oxide.Plugins
 
         private void Unload()
         {
-            // This will clean up the UI for all active players
             foreach (var player in BasePlayer.activePlayerList)
             {
                 CuiHelper.DestroyUi(player, "PurgePanel");
