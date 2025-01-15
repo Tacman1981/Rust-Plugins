@@ -5,12 +5,11 @@
 //   ██║   ██║  ██║╚██████╗██║ ╚═╝ ██║██║  ██║██║ ╚████║
 //   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 using UnityEngine;
-using Rust;
 using System;
 using Oxide.Core;
 using Newtonsoft.Json;
-using System.Collections.Generic;
 using Oxide.Core.Plugins;
+using System.Collections.Generic;
 using Oxide.Core.Libraries;
 using System.Numerics;
 
@@ -20,9 +19,6 @@ namespace Oxide.Plugins
     [Description("Configurable crate buoyancy, add your own crates to config by shortname")]
     class BuoyantCrates : RustPlugin
     {
-
-        [PluginReference] Plugin Shipwreck;
-
         #region Config
 
         public PluginConfig _config;
@@ -121,6 +117,14 @@ namespace Oxide.Plugins
             {
                 try
                 {
+                    if (Interface.CallHook("OnBuoyancyAdded", crate.net.ID.Value) != null)
+                    {
+                        if (_config.debugMode)
+                        {
+                            Puts($"Buoyancy addition interrupted for {crate.ShortPrefabName} by a plugin.");
+                        }
+                        return;
+                    }
                     // Check if the crate still doesn't have a parent
                     if (crate.transform.parent != null)
                     {
@@ -129,7 +133,7 @@ namespace Oxide.Plugins
                         {
                             Puts($"Crate {crate.ShortPrefabName} is parented to {parentEntity.name}, skipping buoyancy.");
                         }
-                        return; // Skip buoyancy if the crate is parented
+                        return;
                     }
 
                     // Check for specific plugin-related crates
@@ -175,7 +179,7 @@ namespace Oxide.Plugins
                         rb.mass = 2f;
                         rb.interpolation = RigidbodyInterpolation.Interpolate;
                         rb.angularVelocity = Vector3Ex.Range(-2.75f, 2.75f);
-                        rb.drag = 0.5f * rb.mass;
+                        rb.drag = 0.5f * (rb.mass / 2);
 
                         if (_config.debugMode)
                         {
@@ -200,7 +204,7 @@ namespace Oxide.Plugins
                 }
                 catch (Exception ex)
                 {
-                    Puts($"{entity.ShortPrefabName} was not processed properly, nothing to worry about as the plugin will continue working normally. Probably NRE on some component.");
+                    Puts($"{entity.ShortPrefabName} was not processed properly, nothing to worry about as the plugin will continue working normally : {ex.Message}");
                 }
             });
         }
