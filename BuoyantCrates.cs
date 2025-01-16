@@ -9,9 +9,11 @@ using System;
 using Oxide.Core;
 using Newtonsoft.Json;
 using Oxide.Core.Plugins;
+using Oxide.Core.Libraries.Covalence;
 using System.Collections.Generic;
 using Oxide.Core.Libraries;
 using System.Numerics;
+using System.Reflection;
 
 namespace Oxide.Plugins
 {
@@ -20,7 +22,6 @@ namespace Oxide.Plugins
     class BuoyantCrates : RustPlugin
     {
         #region Config
-
         public PluginConfig _config;
 
         public class PluginConfig
@@ -52,6 +53,7 @@ namespace Oxide.Plugins
 
         void Init()
         {
+            HookMethod.Equals("OnBuoyancyAdded", this);
             Plugin shipwreckPlugin = plugins.Find("Shipwreck");
             Plugin convoyPlugin = plugins.Find("Convoy");
             Plugin trainEvent = plugins.Find("ArmoredTrain");
@@ -107,6 +109,7 @@ namespace Oxide.Plugins
             {
                 return;
             }
+            if(Interface.CallHook("OnBuoyancyAdded") != null) return;
 
             Plugin shipwreckPlugin = plugins.Find("Shipwreck");
             Plugin convoyPlugin = plugins.Find("Convoy");
@@ -117,14 +120,6 @@ namespace Oxide.Plugins
             {
                 try
                 {
-                    if (Interface.CallHook("OnBuoyancyAdded", crate.net.ID.Value) != null)
-                    {
-                        if (_config.debugMode)
-                        {
-                            Puts($"Buoyancy addition interrupted for {crate.ShortPrefabName} by a plugin.");
-                        }
-                        return;
-                    }
                     // Check if the crate still doesn't have a parent
                     if (crate.transform.parent != null)
                     {
