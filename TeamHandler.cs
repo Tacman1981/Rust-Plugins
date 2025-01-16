@@ -63,7 +63,7 @@ namespace Oxide.Plugins
             playerTeam.SendInvite(target);
 
             sender.ChatMessage($"You have invited {target.displayName} to your team.");
-            target.ChatMessage($"{sender.displayName} has invited you to join their team from afar. Please press tab to accept or decline.");
+            target.ChatMessage($"{sender.displayName} has invited you to their team. You can accept of decline from your inventory tab.");
         }
 
         private bool TryCreateTeam(BasePlayer player)
