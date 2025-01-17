@@ -109,7 +109,6 @@ namespace Oxide.Plugins
             {
                 return;
             }
-            if(Interface.CallHook("OnBuoyancyAdded") != null) return;
 
             Plugin shipwreckPlugin = plugins.Find("Shipwreck");
             Plugin convoyPlugin = plugins.Find("Convoy");
