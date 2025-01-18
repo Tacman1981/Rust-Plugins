@@ -11,8 +11,6 @@ using UnityEngine;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using System;
-//Added rigidbody constraints to prevent the crates maintaining velocity when being transformed
-//Added a variance in the crate spawning near the player so they dont all pile on top of one another and dance in the sky.
 
 namespace Oxide.Plugins
 {
@@ -25,9 +23,11 @@ namespace Oxide.Plugins
         private Dictionary<ulong, bool> playerOptInStatus = new Dictionary<ulong, bool>();
         private const string PermissionBlockCommand = "transformhelicrates.block";
         private const string dataFilePath = "TransformHeliCrates/TransformHeliCrates";
+        private const string usePerm = "transformhelicrates.use";
 
         void Init()
         {
+            permission.RegisterPermission(usePerm, this);
             permission.RegisterPermission(PermissionBlockCommand, this);
             LoadOptInData();
         }
@@ -90,6 +90,8 @@ namespace Oxide.Plugins
 
         private void CheckOwnerAndMove(BaseEntity entity)
         {
+            if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
+
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
@@ -130,7 +132,7 @@ namespace Oxide.Plugins
         [ChatCommand("crates")]
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
         {
-            if (permission.UserHasPermission(player.UserIDString, PermissionBlockCommand))
+            if (permission.UserHasPermission(player.UserIDString, PermissionBlockCommand) || !permission.UserHasPermission(player.UserIDString, usePerm))
             {
                 player.ChatMessage("You do not have permission to use this command.");
                 return;
