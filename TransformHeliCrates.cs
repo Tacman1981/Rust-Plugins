@@ -96,7 +96,7 @@ namespace Oxide.Plugins
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
             // Opt-in check for automatic crate transform
-            if (owner == null || !playerOptInStatus.GetValueOrDefault(ownerId, false))
+            if (owner == null)
             {
                 //return here if player query is not true
                 return;
