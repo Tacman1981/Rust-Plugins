@@ -11,10 +11,12 @@ using UnityEngine;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using System;
+//Added rigidbody constraints to prevent the crates maintaining velocity when being transformed
+//Added a variance in the crate spawning near the player so they dont all pile on top of one another and dance in the sky.
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.0.15")]
+    [Info("TransformHeliCrates", "Tacman", "0.1.0")]
     [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
@@ -92,27 +94,37 @@ namespace Oxide.Plugins
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
             // Opt-in check for automatic crate transform
-            if (owner == null || !playerOptInStatus.GetValueOrDefault(ownerId, true))
+            if (owner == null || !playerOptInStatus.GetValueOrDefault(ownerId, false))
             {
-                //return here if player query is not false
+                //return here if player query is not true
                 return;
             }
 
             Vector3 playerPosition = owner.transform.position;
-            entity.transform.position = playerPosition + new Vector3(0, 1.5f, 0);
+            
+            // Generate random offsets
+            float randomX = UnityEngine.Random.Range(-5f, 5f);
+            float randomY = UnityEngine.Random.Range(2f, 4f);
+            float randomZ = UnityEngine.Random.Range(-5f, 5f);
+            
+            // Apply the random offset to the position
+            entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
+            
+            Rigidbody rb = entity.gameObject.GetComponent<Rigidbody>();
+            if (rb == null)
+            {
+                rb = entity.gameObject.AddComponent<Rigidbody>();
+            }
+            
+            // Configure the Rigidbody
+            rb.useGravity = true; // Enable gravity if desired
+            rb.isKinematic = false;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Set collision detection mode
+            rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX;
+
             entity.SendNetworkUpdateImmediate();
 
-            Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
-
-            timer.Once(1f, () =>
-            {
-                Rigidbody rb = entity.GetComponent<Rigidbody>();
-                if (rb == null)
-                {
-                    rb = entity.gameObject.AddComponent<Rigidbody>();
-                }
-                rb.useGravity = true;
-            });
+            //Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
         }
 
         [ChatCommand("crates")]
