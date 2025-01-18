@@ -91,7 +91,30 @@ namespace Oxide.Plugins
         private void CheckOwnerAndMove(BaseEntity entity)
         {
             if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
-
+            
+            // Check if the player is opted in
+            if (!playerOptInStatus.TryGetValue(player.userID, out bool isOptedIn) || !isOptedIn)
+            {
+                // Send the message once if the player is not opted in
+                if (!hasSentMessage)  // Prevent the message from being sent repeatedly
+                {
+                    player.ChatMessage("Use /cratetoggle to toggle crate spawning.");
+                    hasSentMessage = true;  // Ensure the message is sent only once
+                }
+                return; // Exit after sending the message
+            }
+        
+            // Reset the message flag when the player is opted in
+            hasSentMessage = false;
+        
+            // Continue with your crate spawning logic only if the player is opted in
+            foreach (var crate in cratesToSpawn)
+            {
+                // Spawn crates logic here
+                Vector3 spawnPosition = player.transform.position + new Vector3(0, 1.5f, 0); // Example spawn position
+                SpawnCrate(crate, spawnPosition);  // Example crate spawning method
+            }
+            
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
