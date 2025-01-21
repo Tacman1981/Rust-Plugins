@@ -14,7 +14,7 @@ using System;
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.1.0")]
+    [Info("TransformHeliCrates", "Tacman", "0.1.5")]
     [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
