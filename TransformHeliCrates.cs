@@ -14,7 +14,7 @@ using System;
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.2.0")]
+    [Info("TransformHeliCrates", "Tacman", "0.1.5")]
     [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
@@ -113,9 +113,9 @@ namespace Oxide.Plugins
             Vector3 playerPosition = owner.transform.position;
 
             // Generate random offsets
-            float randomX = UnityEngine.Random.Range(-5f, 5f);
+            float randomX = UnityEngine.Random.Range(config.xMin, config.xMax);
             float randomY = UnityEngine.Random.Range(2f, 4f);
-            float randomZ = UnityEngine.Random.Range(-5f, 5f);
+            float randomZ = UnityEngine.Random.Range(config.zMin, config.zMax);
 
             // Apply the random offset to the position
             entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
