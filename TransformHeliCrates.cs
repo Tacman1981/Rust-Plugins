@@ -12,8 +12,6 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using System;
 
-// Added configurable timer for despawning of transformed crates and 2 config settings for the variance of the crates new location
-
 namespace Oxide.Plugins
 {
     [Info("TransformHeliCrates", "Tacman", "0.2.0")]
@@ -148,7 +146,7 @@ namespace Oxide.Plugins
                     {
                         entity.Kill();
                         crateTimers.Remove((uint)crateId);
-                        Puts($"Crate with ID {crateId} despawned after {config.crateDespawn} seconds.");
+                        //Puts($"Crate with ID {crateId} despawned after {config.crateDespawn} seconds.");
                     }
                 });
             }
@@ -162,7 +160,7 @@ namespace Oxide.Plugins
                 crateTimers[(uint)baseEntity.net.ID.Value]?.Destroy();
                 crateTimers.Remove((uint)baseEntity.net.ID.Value);
 
-                Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
+                //Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
             }
         }
 
