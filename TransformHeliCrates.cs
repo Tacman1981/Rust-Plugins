@@ -12,9 +12,11 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using System;
 
+// Added configurable timer for despawning of transformed crates and 2 config settings for the variance of the crates new location
+
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.1.5")]
+    [Info("TransformHeliCrates", "Tacman", "0.2.0")]
     [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
@@ -80,22 +82,7 @@ namespace Oxide.Plugins
         {
             if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
             {
-                ulong crateId = entity.net?.ID.Value ?? 0;
-
-                if (crateId != 0 && !crateTimers.ContainsKey((uint)crateId))
-                {
-                    crateTimers[(uint)crateId] = timer.Once(config.crateDespawn, () =>
-                    {
-                        if (entity != null && !entity.IsDestroyed)
-                        {
-                            entity.Kill();
-                            crateTimers.Remove((uint)crateId);
-                            Puts($"Crate with ID {crateId} despawned after {config.crateDespawn} seconds.");
-                        }
-                    });
-                }
-
-                NextTick(() => CheckOwnerAndMove(entity));
+                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
             }
         }
 
@@ -111,27 +98,26 @@ namespace Oxide.Plugins
             lastCommandUsage.Clear();
         }
 
-
         private void CheckOwnerAndMove(BaseEntity entity)
         {
             if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
 
-            // Opt-out notification logic
-            if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
-            {
-                return;
-            }
-
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
-            if (owner == null) return;
+            // Opt-in check for automatic crate transform
+            if (owner == null)
+            {
+                //return here if player query is not true
+                return;
+            }
 
             Vector3 playerPosition = owner.transform.position;
 
-            float randomX = UnityEngine.Random.Range(config.xMin, config.xMax);
+            // Generate random offsets
+            float randomX = UnityEngine.Random.Range(-5f, 5f);
             float randomY = UnityEngine.Random.Range(2f, 4f);
-            float randomZ = UnityEngine.Random.Range(config.zMin, config.zMax);
+            float randomZ = UnityEngine.Random.Range(-5f, 5f);
 
             // Apply the random offset to the position
             entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
@@ -142,14 +128,30 @@ namespace Oxide.Plugins
                 rb = entity.gameObject.AddComponent<Rigidbody>();
             }
 
-            rb.useGravity = true;
+            // Configure the Rigidbody
+            rb.useGravity = true; // Enable gravity if desired
             rb.isKinematic = false;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-            rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Set collision detection mode
+            rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX;
 
             entity.SendNetworkUpdateImmediate();
 
-            // Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
+            //Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
+
+            ulong crateId = entity.net?.ID.Value ?? 0;
+
+            if (crateId != 0 && !crateTimers.ContainsKey((uint)crateId))
+            {
+                crateTimers[(uint)crateId] = timer.Once(config.crateDespawn, () =>
+                {
+                    if (entity != null && !entity.IsDestroyed)
+                    {
+                        entity.Kill();
+                        crateTimers.Remove((uint)crateId);
+                        Puts($"Crate with ID {crateId} despawned after {config.crateDespawn} seconds.");
+                    }
+                });
+            }
         }
 
         void OnEntityKill(BaseNetworkable entity)
