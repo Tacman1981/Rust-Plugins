@@ -24,19 +24,13 @@ namespace Oxide.Plugins
         private const string PermissionBlockCommand = "transformhelicrates.block";
         private const string dataFilePath = "TransformHeliCrates/TransformHeliCrates";
         private const string usePerm = "transformhelicrates.use";
+        private Dictionary<ulong, bool> hasSentMessage = new Dictionary<ulong, bool>();
 
         void Init()
         {
             permission.RegisterPermission(usePerm, this);
             permission.RegisterPermission(PermissionBlockCommand, this);
             LoadOptInData();
-        }
-
-        void Unload()
-        {
-            SaveOptInData();
-            heliKillers.Clear();
-            lastCommandUsage.Clear();
         }
 
         private void LoadOptInData()
@@ -80,77 +74,96 @@ namespace Oxide.Plugins
             }
         }
 
+        private Dictionary<uint, Timer> crateTimers = new Dictionary<uint, Timer>();
+
         void OnEntitySpawned(BaseEntity entity)
         {
             if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
             {
-                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
+                ulong crateId = entity.net?.ID.Value ?? 0;
+
+                if (crateId != 0 && !crateTimers.ContainsKey((uint)crateId))
+                {
+                    crateTimers[(uint)crateId] = timer.Once(config.crateDespawn, () =>
+                    {
+                        if (entity != null && !entity.IsDestroyed)
+                        {
+                            entity.Kill();
+                            crateTimers.Remove((uint)crateId);
+                            Puts($"Crate with ID {crateId} despawned after {config.crateDespawn} seconds.");
+                        }
+                    });
+                }
+
+                NextTick(() => CheckOwnerAndMove(entity));
             }
         }
+
+        void Unload()
+        {
+            foreach (var crateTimer in crateTimers.Values)
+            {
+                crateTimer?.Destroy();
+            }
+            crateTimers.Clear();
+            SaveOptInData();
+            heliKillers.Clear();
+            lastCommandUsage.Clear();
+        }
+
 
         private void CheckOwnerAndMove(BaseEntity entity)
         {
             if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
-            
-            // Check if the player is opted in
-            if (!playerOptInStatus.TryGetValue(player.userID, out bool isOptedIn) || !isOptedIn)
-            {
-                // Send the message once if the player is not opted in
-                if (!hasSentMessage)  // Prevent the message from being sent repeatedly
-                {
-                    player.ChatMessage("Use /cratetoggle to toggle crate spawning.");
-                    hasSentMessage = true;  // Ensure the message is sent only once
-                }
-                return; // Exit after sending the message
-            }
-        
-            // Reset the message flag when the player is opted in
-            hasSentMessage = false;
-        
-            // Continue with your crate spawning logic only if the player is opted in
-            foreach (var crate in cratesToSpawn)
-            {
-                // Spawn crates logic here
-                Vector3 spawnPosition = player.transform.position + new Vector3(0, 1.5f, 0); // Example spawn position
-                SpawnCrate(crate, spawnPosition);  // Example crate spawning method
-            }
-            
-            ulong ownerId = entity.OwnerID;
-            BasePlayer owner = BasePlayer.FindByID(ownerId);
 
-            // Opt-in check for automatic crate transform
-            if (owner == null)
+            // Opt-out notification logic
+            if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
             {
-                //return here if player query is not true
                 return;
             }
 
+            ulong ownerId = entity.OwnerID;
+            BasePlayer owner = BasePlayer.FindByID(ownerId);
+
+            if (owner == null) return;
+
             Vector3 playerPosition = owner.transform.position;
-            
-            // Generate random offsets
-            float randomX = UnityEngine.Random.Range(-5f, 5f);
+
+            float randomX = UnityEngine.Random.Range(config.xMin, config.xMax);
             float randomY = UnityEngine.Random.Range(2f, 4f);
-            float randomZ = UnityEngine.Random.Range(-5f, 5f);
-            
+            float randomZ = UnityEngine.Random.Range(config.zMin, config.zMax);
+
             // Apply the random offset to the position
             entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
-            
+
             Rigidbody rb = entity.gameObject.GetComponent<Rigidbody>();
             if (rb == null)
             {
                 rb = entity.gameObject.AddComponent<Rigidbody>();
             }
-            
-            // Configure the Rigidbody
-            rb.useGravity = true; // Enable gravity if desired
+
+            rb.useGravity = true;
             rb.isKinematic = false;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Set collision detection mode
-            rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
 
             entity.SendNetworkUpdateImmediate();
 
-            //Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
+            // Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
         }
+
+        void OnEntityKill(BaseNetworkable entity)
+        {
+            if (entity is BaseEntity baseEntity && crateTimers.ContainsKey((uint)baseEntity.net.ID.Value))
+            {
+                // Cancel and remove the despawn timer for this entity
+                crateTimers[(uint)baseEntity.net.ID.Value]?.Destroy();
+                crateTimers.Remove((uint)baseEntity.net.ID.Value);
+
+                Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
+            }
+        }
+
 
         [ChatCommand("crates")]
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
@@ -221,8 +234,27 @@ namespace Oxide.Plugins
         {
             [JsonProperty("Cooldown")]
             public int coolDown = 10;
+            [JsonProperty("Teleport to player variance: Z Min")]
+            public float zMin = -5;
+            [JsonProperty("Teleport to player variance: Z Max")]
+            public float zMax = 5;
+            [JsonProperty("Teleport to player variance: X Min")]
+            public float xMin = -5;
+            [JsonProperty("Teleport to player variance: X MaX")]
+            public float xMax = 5;
+            [JsonProperty("Time until spawned crates despawn")]
+            public float crateDespawn = 3600f;
 
-            public static Configuration DefaultConfig() => new Configuration { coolDown = 10 };
+            public static Configuration DefaultConfig() => new Configuration
+            {
+                coolDown = 10,
+                zMin = -5f,
+                zMax = 5f,
+                xMin = -5f,
+                xMax = 5f,
+                crateDespawn = 3600f
+            };
+
         }
 
         protected override void LoadConfig()
