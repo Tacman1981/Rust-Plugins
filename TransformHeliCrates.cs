@@ -35,7 +35,17 @@ namespace Oxide.Plugins
 
         private void LoadOptInData()
         {
+            // Load data
             playerOptInStatus = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, bool>>(dataFilePath) ?? new Dictionary<ulong, bool>();
+
+            // Ensure players who don't have an entry are assumed opted-in (default to true)
+            foreach (var playerId in playerOptInStatus.Keys.ToList())
+            {
+                if (!playerOptInStatus.ContainsKey(playerId))
+                {
+                    playerOptInStatus[playerId] = true; // Assume opted in by default
+                }
+            }
         }
 
         private void SaveOptInData()
@@ -99,6 +109,12 @@ namespace Oxide.Plugins
         private void CheckOwnerAndMove(BaseEntity entity)
         {
             if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
+
+            if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
+            {
+                //player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
+                return;
+            }
 
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
@@ -174,15 +190,9 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (!playerOptInStatus.TryGetValue(player.userID, out bool isOptedIn) || !isOptedIn)
-            {
-                player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
-                return;
-            }
-
             if (lastCommandUsage.TryGetValue(player.userID, out DateTime lastUse) && (DateTime.Now - lastUse).TotalSeconds < config.coolDown)
             {
-                player.ChatMessage($"Please wait {config.coolDown - (int)(DateTime.Now - lastUse).TotalSeconds} seconds before using this command again.");
+                player.ChatMessage($"Please wait {(config.coolDown - (DateTime.Now - lastUse).TotalSeconds):F2} seconds before using this command again.");
                 return;
             }
 
@@ -202,6 +212,10 @@ namespace Oxide.Plugins
             }
 
             int movedCount = 0;
+            BaseEntity closestCrate = null;
+            float closestDistance = float.MaxValue;
+
+            // Find the closest crate within the specified range
             foreach (BaseEntity crate in crates)
             {
                 ulong ownerId = crate.OwnerID;
@@ -211,19 +225,26 @@ namespace Oxide.Plugins
                 {
                     float distance = Vector3.Distance(crate.transform.position, player.transform.position);
 
-                    if (distance <= 10f)
+                    if (distance <= 10f && distance < closestDistance)
                     {
-                        CheckOwnerAndMove(crate);
-                        movedCount++;
-                    }
-                    else
-                    {
-                        player.ChatMessage($"Crate {crate.ShortPrefabName} is too far from your position to move.");
+                        closestDistance = distance;
+                        closestCrate = crate;
                     }
                 }
             }
 
-            player.ChatMessage($"Moved {movedCount} crate(s) to Owners Position.");
+            // If we found a valid closest crate, move it
+            if (closestCrate != null)
+            {
+                CheckOwnerAndMove(closestCrate);
+                movedCount++;
+            }
+            else
+            {
+                player.ChatMessage("No crates are close enough to move.");
+            }
+
+            //player.ChatMessage($"Moved {movedCount} crate(s) to Owners Position.");
             lastCommandUsage[player.userID] = DateTime.Now;
         }
 
