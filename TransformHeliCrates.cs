@@ -24,14 +24,8 @@ namespace Oxide.Plugins
         private const string PermissionBlockCommand = "transformhelicrates.block";
         private const string dataFilePath = "TransformHeliCrates/TransformHeliCrates";
         private const string usePerm = "transformhelicrates.use";
-        private Dictionary<ulong, bool> hasSentMessage = new Dictionary<ulong, bool>();
 
-        void Init()
-        {
-            permission.RegisterPermission(usePerm, this);
-            permission.RegisterPermission(PermissionBlockCommand, this);
-            LoadOptInData();
-        }
+        #region Data Initialization
 
         private void LoadOptInData()
         {
@@ -53,46 +47,11 @@ namespace Oxide.Plugins
             Interface.Oxide.DataFileSystem.WriteObject(dataFilePath, playerOptInStatus);
         }
 
-        [ChatCommand("cratetoggle")]
-        private void ToggleCrateOptIn(BasePlayer player, string command, string[] args)
-        {
-            if (args.Length == 1 && bool.TryParse(args[0], out bool optIn))
-            {
-                playerOptInStatus[player.userID] = optIn;
-                SaveOptInData();
-                player.ChatMessage($"Crate-moving feature is now {(optIn ? "enabled" : "disabled")} for you.");
-            }
-            else
-            {
-                player.ChatMessage("Usage: /cratetoggle <true|false>");
-            }
-        }
+        #endregion
 
-        void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
-        {
-            if (entity is PatrolHelicopter helicopter && info.InitiatorPlayer != null)
-            {
-                heliKillers[helicopter] = info.InitiatorPlayer;
-            }
-        }
-
-        void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
-        {
-            if (entity is PatrolHelicopter helicopter)
-            {
-                heliKillers.Remove(helicopter);
-            }
-        }
+        #region Setup & Unload
 
         private Dictionary<uint, Timer> crateTimers = new Dictionary<uint, Timer>();
-
-        void OnEntitySpawned(BaseEntity entity)
-        {
-            if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
-            {
-                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
-            }
-        }
 
         void Unload()
         {
@@ -106,6 +65,16 @@ namespace Oxide.Plugins
             lastCommandUsage.Clear();
         }
 
+        void Init()
+        {
+            permission.RegisterPermission(usePerm, this);
+            permission.RegisterPermission(PermissionBlockCommand, this);
+            LoadOptInData();
+        }
+
+        #endregion
+
+        #region Helper Method
         private void CheckOwnerAndMove(BaseEntity entity)
         {
             if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
@@ -168,6 +137,34 @@ namespace Oxide.Plugins
             }
         }
 
+        #endregion
+
+        #region Hooks
+
+        void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
+        {
+            if (entity is PatrolHelicopter helicopter && info.InitiatorPlayer != null)
+            {
+                heliKillers[helicopter] = info.InitiatorPlayer;
+            }
+        }
+
+        void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
+        {
+            if (entity is PatrolHelicopter helicopter)
+            {
+                heliKillers.Remove(helicopter);
+            }
+        }
+
+        void OnEntitySpawned(BaseEntity entity)
+        {
+            if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
+            {
+                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
+            }
+        }
+
         void OnEntityKill(BaseNetworkable entity)
         {
             if (entity is BaseEntity baseEntity && crateTimers.ContainsKey((uint)baseEntity.net.ID.Value))
@@ -180,6 +177,9 @@ namespace Oxide.Plugins
             }
         }
 
+        #endregion
+
+        #region Commands
 
         [ChatCommand("crates")]
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
@@ -247,6 +247,23 @@ namespace Oxide.Plugins
             //player.ChatMessage($"Moved {movedCount} crate(s) to Owners Position.");
             lastCommandUsage[player.userID] = DateTime.Now;
         }
+
+        [ChatCommand("cratetoggle")]
+        private void ToggleCrateOptIn(BasePlayer player, string command, string[] args)
+        {
+            if (args.Length == 1 && bool.TryParse(args[0], out bool optIn))
+            {
+                playerOptInStatus[player.userID] = optIn;
+                SaveOptInData();
+                player.ChatMessage($"Crate-moving feature is now {(optIn ? "enabled" : "disabled")} for you.");
+            }
+            else
+            {
+                player.ChatMessage("Usage: /cratetoggle <true|false>");
+            }
+        }
+
+        #endregion
 
         #region Config
 
