@@ -213,7 +213,7 @@ namespace Oxide.Plugins
 
             int movedCount = 0;
             BaseEntity closestCrate = null;
-            float closestDistance = float.MaxValue;
+            float closestDistance = 5f;
 
             // Find the closest crate within the specified range
             foreach (BaseEntity crate in crates)
@@ -225,7 +225,7 @@ namespace Oxide.Plugins
                 {
                     float distance = Vector3.Distance(crate.transform.position, player.transform.position);
 
-                    if (distance <= 10f && distance < closestDistance)
+                    if (distance <= 20f && distance < closestDistance)
                     {
                         closestDistance = distance;
                         closestCrate = crate;
