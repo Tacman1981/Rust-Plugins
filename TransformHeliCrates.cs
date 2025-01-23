@@ -206,7 +206,7 @@ namespace Oxide.Plugins
 
             int movedCount = 0;
             BaseEntity closestCrate = null;
-            float closestDistance = 15f;
+            float closestDistance = float.MaxValue;
 
             foreach (BaseEntity crate in crates)
             {
