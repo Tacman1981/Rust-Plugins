@@ -29,15 +29,13 @@ namespace Oxide.Plugins
 
         private void LoadOptInData()
         {
-            // Load data
             playerOptInStatus = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, bool>>(dataFilePath) ?? new Dictionary<ulong, bool>();
 
-            // Ensure players who don't have an entry are assumed opted-in (default to true)
             foreach (var playerId in playerOptInStatus.Keys.ToList())
             {
                 if (!playerOptInStatus.ContainsKey(playerId))
                 {
-                    playerOptInStatus[playerId] = true; // Assume opted in by default
+                    playerOptInStatus[playerId] = true;
                 }
             }
         }
@@ -88,21 +86,18 @@ namespace Oxide.Plugins
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
 
-            // Opt-in check for automatic crate transform
             if (owner == null)
             {
-                //return here if player query is not true
+                Puts($"No owner found for {entity}");
                 return;
             }
 
             Vector3 playerPosition = owner.transform.position;
 
-            // Generate random offsets
             float randomX = UnityEngine.Random.Range(config.xMin, config.xMax);
             float randomY = UnityEngine.Random.Range(2f, 4f);
             float randomZ = UnityEngine.Random.Range(config.zMin, config.zMax);
 
-            // Apply the random offset to the position
             entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
 
             Rigidbody rb = entity.gameObject.GetComponent<Rigidbody>();
@@ -111,10 +106,9 @@ namespace Oxide.Plugins
                 rb = entity.gameObject.AddComponent<Rigidbody>();
             }
 
-            // Configure the Rigidbody
-            rb.useGravity = true; // Enable gravity if desired
+            rb.useGravity = true;
             rb.isKinematic = false;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Set collision detection mode
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
             rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX;
 
             entity.SendNetworkUpdateImmediate();
@@ -169,7 +163,6 @@ namespace Oxide.Plugins
         {
             if (entity is BaseEntity baseEntity && crateTimers.ContainsKey((uint)baseEntity.net.ID.Value))
             {
-                // Cancel and remove the despawn timer for this entity
                 crateTimers[(uint)baseEntity.net.ID.Value]?.Destroy();
                 crateTimers.Remove((uint)baseEntity.net.ID.Value);
 
@@ -213,9 +206,8 @@ namespace Oxide.Plugins
 
             int movedCount = 0;
             BaseEntity closestCrate = null;
-            float closestDistance = 5f;
+            float closestDistance = 15f;
 
-            // Find the closest crate within the specified range
             foreach (BaseEntity crate in crates)
             {
                 ulong ownerId = crate.OwnerID;
