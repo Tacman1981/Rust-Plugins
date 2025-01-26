@@ -11,10 +11,11 @@ using UnityEngine;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using System;
+using System.Linq;
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.2.0")]
+    [Info("TransformHeliCrates", "Tacman", "0.2.1")]
     [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
@@ -36,6 +37,7 @@ namespace Oxide.Plugins
                 if (!playerOptInStatus.ContainsKey(playerId))
                 {
                     playerOptInStatus[playerId] = true;
+                    SaveOptInData();
                 }
             }
         }
@@ -76,12 +78,6 @@ namespace Oxide.Plugins
         private void CheckOwnerAndMove(BaseEntity entity)
         {
             if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
-
-            if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
-            {
-                //player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
-                return;
-            }
 
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
@@ -135,6 +131,28 @@ namespace Oxide.Plugins
 
         #region Hooks
 
+        void OnUserPermissionGranted(string id, string permName)
+        {
+            if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(permName)) return;
+
+            if (permName.Equals(usePerm))
+            {
+                if (ulong.TryParse(id, out ulong userId))
+                {
+                    if (!playerOptInStatus.ContainsKey(userId) || !playerOptInStatus[userId])
+                    {
+                        playerOptInStatus[userId] = true;
+                        SaveOptInData();
+                        Puts($"Player {userId} has been opted in because they were granted the {usePerm} permission.");
+                    }
+                }
+                else
+                {
+                    Puts($"Invalid user ID format: {id}");
+                }
+            }
+        }
+
         void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
         {
             if (entity is PatrolHelicopter helicopter && info.InitiatorPlayer != null)
@@ -155,7 +173,18 @@ namespace Oxide.Plugins
         {
             if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
             {
-                timer.Once(0.1f, () => CheckOwnerAndMove(entity));
+
+                timer.Once(0.1f, () =>
+                {
+                    if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
+                    {
+                        //player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
+                        return;
+                    }
+
+                    CheckOwnerAndMove(entity);
+                });
+            
             }
         }
 
@@ -205,38 +234,29 @@ namespace Oxide.Plugins
             }
 
             int movedCount = 0;
-            BaseEntity closestCrate = null;
-            float closestDistance = float.MaxValue;
+            float moveRadius = 20f; // Define the radius for moving crates
 
             foreach (BaseEntity crate in crates)
             {
-                ulong ownerId = crate.OwnerID;
-                BasePlayer owner = BasePlayer.FindByID(ownerId);
+                float distance = Vector3.Distance(crate.transform.position, player.transform.position);
 
-                if (owner != null)
+                // Check if the crate is within the defined radius
+                if (distance <= moveRadius)
                 {
-                    float distance = Vector3.Distance(crate.transform.position, player.transform.position);
-
-                    if (distance <= 20f && distance < closestDistance)
-                    {
-                        closestDistance = distance;
-                        closestCrate = crate;
-                    }
+                    CheckOwnerAndMove(crate); // Move the crate
+                    movedCount++;
                 }
             }
 
-            // If we found a valid closest crate, move it
-            if (closestCrate != null)
-            {
-                CheckOwnerAndMove(closestCrate);
-                movedCount++;
-            }
-            else
+            if (movedCount == 0)
             {
                 player.ChatMessage("No crates are close enough to move.");
             }
+            else
+            {
+                player.ChatMessage($"Moved {movedCount} crate(s) to your position.");
+            }
 
-            //player.ChatMessage($"Moved {movedCount} crate(s) to Owners Position.");
             lastCommandUsage[player.userID] = DateTime.Now;
         }
 
