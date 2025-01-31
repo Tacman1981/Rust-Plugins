@@ -13,13 +13,15 @@ using Newtonsoft.Json;
 using System;
 using System.Linq;
 
+
+//Bug in the OnEntityKill being looked into, maybe this is fixed now..
+
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.2.1")]
+    [Info("TransformHeliCrates", "Tacman", "0.2.2")]
     [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
-        private Dictionary<PatrolHelicopter, BasePlayer> heliKillers = new Dictionary<PatrolHelicopter, BasePlayer>();
         private Dictionary<ulong, DateTime> lastCommandUsage = new Dictionary<ulong, DateTime>();
         private Dictionary<ulong, bool> playerOptInStatus = new Dictionary<ulong, bool>();
         private const string PermissionBlockCommand = "transformhelicrates.block";
@@ -61,7 +63,6 @@ namespace Oxide.Plugins
             }
             crateTimers.Clear();
             SaveOptInData();
-            heliKillers.Clear();
             lastCommandUsage.Clear();
         }
 
@@ -152,23 +153,6 @@ namespace Oxide.Plugins
                 }
             }
         }
-
-        void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
-        {
-            if (entity is PatrolHelicopter helicopter && info.InitiatorPlayer != null)
-            {
-                heliKillers[helicopter] = info.InitiatorPlayer;
-            }
-        }
-
-        void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
-        {
-            if (entity is PatrolHelicopter helicopter)
-            {
-                heliKillers.Remove(helicopter);
-            }
-        }
-
         void OnEntitySpawned(BaseEntity entity)
         {
             if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
@@ -184,20 +168,23 @@ namespace Oxide.Plugins
 
                     CheckOwnerAndMove(entity);
                 });
-            
+
             }
         }
 
         void OnEntityKill(BaseNetworkable entity)
         {
-            if (entity is BaseEntity baseEntity && crateTimers.ContainsKey((uint)baseEntity.net.ID.Value))
+            if (entity is BaseEntity baseEntity && baseEntity is StorageContainer crate && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
             {
-                crateTimers[(uint)baseEntity.net.ID.Value]?.Destroy();
-                crateTimers.Remove((uint)baseEntity.net.ID.Value);
-
-                //Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
+                if (crateTimers.ContainsKey((uint)baseEntity.net.ID.Value))
+                {
+                    crateTimers[(uint)baseEntity.net.ID.Value]?.Destroy();
+                    crateTimers.Remove((uint)baseEntity.net.ID.Value);
+                    Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
+                }
             }
         }
+
 
         #endregion
 
