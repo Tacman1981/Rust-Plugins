@@ -17,10 +17,12 @@ using System.Reflection;
 
 namespace Oxide.Plugins
 {
-    [Info("Buoyant Crates", "Tacman", "2.1.3")]
+    [Info("Buoyant Crates", "Tacman", "2.1.5")]
     [Description("Configurable crate buoyancy, add your own crates to config by shortname")]
     class BuoyantCrates : RustPlugin
     {
+        [PluginReference] private readonly Plugin Shipwreck, Convoy, ArmoredTrain;
+
         #region Config
         public PluginConfig _config;
 
@@ -51,40 +53,27 @@ namespace Oxide.Plugins
             Config.WriteObject(_config, true);
         }
 
-        void Init()
+        void Loaded()
         {
-            HookMethod.Equals("OnBuoyancyAdded", this);
-            Plugin shipwreckPlugin = plugins.Find("Shipwreck");
-            Plugin convoyPlugin = plugins.Find("Convoy");
-            Plugin trainEvent = plugins.Find("ArmoredTrain");
-
-            if (trainEvent != null)
+            if (ArmoredTrain != null)
             {
                 Puts("ArmoredTrain event plugin found, ignoring drag and gravity for train event.");
             }
-            else
-            {
-                //Puts("ArmoredTrain plugin not found!");
-            }
 
-            if (shipwreckPlugin != null)
+            if (Shipwreck != null)
             {
                 Puts("Shipwreck plugin found. Setting up buoyancy bypass for Shipwreck crates");
             }
-            else
-            {
-                //Puts("Shipwreck plugin not found!");
-            }
 
-            if (convoyPlugin != null)
+            if (Convoy != null)
             {
                 Puts("Convoy plugin found. Ignoring drag and gravity for Convoy crates.");
             }
-            else
-            {
-                //Puts("Convoy plugin not found!");
-            }
+        }
 
+
+        void Init()
+        {
             _config = Config.ReadObject<PluginConfig>();
 
             if (_config.CrateList == null || _config.CrateList.Count == 0)
@@ -105,21 +94,14 @@ namespace Oxide.Plugins
 
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (entity == null || !(entity is StorageContainer crate) || !_config.CrateList.Contains(entity.ShortPrefabName))
-            {
-                return;
-            }
+            if (entity == null || !(entity is StorageContainer crate) || !_config.CrateList.Contains(entity.ShortPrefabName)) return;
 
-            Plugin shipwreckPlugin = plugins.Find("Shipwreck");
-            Plugin convoyPlugin = plugins.Find("Convoy");
-            Plugin armoredTrainPlugin = plugins.Find("ArmoredTrain");
-
-            // Delay the buoyancy application until the next tick
             NextTick(() =>
             {
+                if (Interface.CallHook("OnBuoyancyAdded", crate.net.ID.Value) != null) return;
+
                 try
                 {
-                    // Check if the crate still doesn't have a parent
                     if (crate.transform.parent != null)
                     {
                         var parentEntity = crate.transform.parent.gameObject;
@@ -130,8 +112,7 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    // Check for specific plugin-related crates
-                    if (armoredTrainPlugin != null && (bool)armoredTrainPlugin.Call("IsTrainCrate", crate.net.ID.Value))
+                    if (ArmoredTrain != null && (bool)ArmoredTrain?.Call("IsTrainCrate"))
                     {
                         if (_config.debugMode)
                         {
@@ -140,7 +121,7 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    if (convoyPlugin != null && (bool)convoyPlugin.Call("IsConvoyCrate", crate))
+                    if (Convoy != null && (bool)Convoy?.Call("IsConvoyCrate"))
                     {
                         if (_config.debugMode)
                         {
@@ -149,7 +130,7 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    if (shipwreckPlugin != null && (bool)shipwreckPlugin.Call("IsShipwreckCrate", crate))
+                    if (Shipwreck != null && (bool)Shipwreck?.Call("IsShipwreckCrate"))
                     {
                         if (_config.debugMode)
                         {
@@ -158,7 +139,7 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    // Add Rigidbody and Buoyancy if the crate is not parented
+                    // Add Rigidbody and Buoyancy
                     Rigidbody rb = crate.GetComponent<Rigidbody>() ?? crate.gameObject.AddComponent<Rigidbody>();
                     if (rb == null)
                     {
@@ -166,15 +147,16 @@ namespace Oxide.Plugins
                         return;
                     }
 
+
                     if (_config.CrateList.Contains("heli_crate") && crate.ShortPrefabName.Contains("heli_crate"))
                     {
                         rb.useGravity = true;
                         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+
                         rb.mass = 2f;
                         rb.interpolation = RigidbodyInterpolation.Interpolate;
                         rb.angularVelocity = Vector3Ex.Range(-2.75f, 2.75f);
-                        rb.drag = 0.5f * (rb.mass / 2);
-
+                        rb.drag = 0.5f * rb.mass;
                         if (_config.debugMode)
                         {
                             Puts("Buoyancy applied to helicopter crate!");
@@ -186,7 +168,6 @@ namespace Oxide.Plugins
                         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationY;
                     }
 
-                    // Add buoyancy component
                     MakeBuoyant buoyancy = crate.gameObject.AddComponent<MakeBuoyant>();
                     buoyancy.buoyancyScale = _config.BuoyancyScale;
                     buoyancy.detectionRate = _config.DetectionRate;
@@ -198,11 +179,10 @@ namespace Oxide.Plugins
                 }
                 catch (Exception ex)
                 {
-                    Puts($"{entity.ShortPrefabName} was not processed properly, nothing to worry about as the plugin will continue working normally : {ex.Message}");
+                    PrintError($"Caught exception with crate {entity.ShortPrefabName}: {ex.ToString}");
                 }
             });
         }
-
         #endregion
 
         #region Classes
