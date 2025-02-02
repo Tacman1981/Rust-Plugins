@@ -96,9 +96,10 @@ namespace Oxide.Plugins
         {
             if (entity == null || !(entity is StorageContainer crate) || !_config.CrateList.Contains(entity.ShortPrefabName)) return;
 
+            if (Interface.CallHook("OnBuoyancyAdded", crate.net.ID.Value) != null) return;
+
             NextTick(() =>
             {
-                if (Interface.CallHook("OnBuoyancyAdded", crate.net.ID.Value) != null) return;
 
                 try
                 {
