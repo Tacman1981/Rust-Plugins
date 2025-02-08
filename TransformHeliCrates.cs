@@ -14,7 +14,7 @@ using System;
 using System.Linq;
 
 
-//Bug in the OnEntityKill being looked into, maybe this is fixed now..
+//Bug in the OnEntityKill being looked into, maybe this is fixed now.. properly checks for entity existing before trying to remove it, squashed bug
 
 namespace Oxide.Plugins
 {
