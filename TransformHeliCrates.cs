@@ -144,7 +144,7 @@ namespace Oxide.Plugins
                     {
                         playerOptInStatus[userId] = true;
                         SaveOptInData();
-                        Puts($"Player {userId} has been opted in because they were granted the {usePerm} permission.");
+                        //Puts($"Player {userId} has been opted in because they were granted the {usePerm} permission.");
                     }
                 }
                 else
@@ -180,7 +180,7 @@ namespace Oxide.Plugins
                 {
                     crateTimers[(uint)baseEntity.net.ID.Value]?.Destroy();
                     crateTimers.Remove((uint)baseEntity.net.ID.Value);
-                    Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
+                    //Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
                 }
             }
         }
@@ -269,7 +269,7 @@ namespace Oxide.Plugins
         static Configuration config;
         public class Configuration
         {
-            [JsonProperty("Cooldown")]
+            [JsonProperty("Cooldown on /crates command (in seconds)")]
             public int coolDown = 10;
             [JsonProperty("Teleport to player variance: Z Min")]
             public float zMin = -5;
