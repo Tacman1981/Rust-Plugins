@@ -1,3 +1,5 @@
+//Some changes to facepunch code has broken this 1. when it does work it has a delay when switching states.
+
 //Special thanks to MinicopterOptions developer for this method, I literally just used the code from that plugin to attach the light, and the method used to toggle the light on and off. now we have night lights on minicopters, and can use jet engine from skill tree with no interference.
 using System.Collections.Generic;
 using UnityEngine;
