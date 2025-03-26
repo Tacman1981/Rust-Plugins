@@ -5,15 +5,17 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("FurnaceNoOreStop", "Tacman", "1.0.2")]
-    [Description("Stops furnaces when there are no more ores, retaining the fuel, and ensures lanterns are unaffected.")]
+    [Info("Furnace No Ore Stop", "Tacman", "1.0.3")]
+    [Description("Stops furnaces when there are no more ores, now stops when owner goes offline")]
     public class FurnaceNoOreStop : RustPlugin
     {
         private string usePerm = "furnacenoorestop.use";
+        private string onOffPerm = "furnacenoorestop.onoff";
 
         void Init()
         {
             permission.RegisterPermission(usePerm, this);
+            permission.RegisterPermission(onOffPerm, this);
         }
 
         private void OnOvenCooked(BaseOven oven)
@@ -45,7 +47,7 @@ namespace Oxide.Plugins
                 BasePlayer player = BasePlayer.FindByID(oven.OwnerID);
                 if (player != null)
                 {
-                    player.ChatMessage("Your cooking has stopped because there are no more cookables.");
+                    //player.ChatMessage("Your cooking has stopped because there are no more cookables.");
                 }
             }
         }
@@ -71,7 +73,37 @@ namespace Oxide.Plugins
                     BasePlayer player = BasePlayer.FindByID(oven.OwnerID);
                     if (player != null)
                     {
-                        player.ChatMessage("Your cooking has resumed because cookable items were added.");
+                        //player.ChatMessage("Your cooking has resumed because cookable items were added.");
+                    }
+                }
+            }
+        }
+
+        private void OnPlayerDisconnected(BasePlayer player)
+        {
+            if (player != null && permission.UserHasPermission(player.UserIDString, onOffPerm))
+            {
+                var entities = BaseNetworkable.serverEntities;
+                foreach (var entity in entities)
+                {
+                    if (entity is BaseOven oven && oven.OwnerID == player.userID)
+                    {
+                        oven.StopCooking();
+                    }
+                }
+            }
+        }
+
+        private void OnPlayerConnected(BasePlayer player)
+        {
+            if (player != null && permission.UserHasPermission(player.UserIDString, onOffPerm))
+            {
+                var entities = BaseNetworkable.serverEntities;
+                foreach (var entity in entities)
+                {
+                    if (entity is BaseOven oven && oven.OwnerID == player.userID)
+                    {
+                        oven.StartCooking();
                     }
                 }
             }
