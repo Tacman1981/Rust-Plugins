@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Furnace No Ore Stop", "Tacman", "1.0.3")]
+    [Info("Furnace No Ore Stop", "Tacman", "1.0.4")]
     [Description("Stops furnaces when there are no more ores, now stops when owner goes offline")]
     public class FurnaceNoOreStop : RustPlugin
     {
@@ -86,7 +86,7 @@ namespace Oxide.Plugins
                 var entities = BaseNetworkable.serverEntities;
                 foreach (var entity in entities)
                 {
-                    if (entity is BaseOven oven && oven.OwnerID == player.userID)
+                    if (entity is BaseOven oven && oven.OwnerID.ToString() == player.UserIDString && !oven.ShortPrefabName.Contains("fire"))
                     {
                         oven.StopCooking();
                     }
@@ -101,9 +101,12 @@ namespace Oxide.Plugins
                 var entities = BaseNetworkable.serverEntities;
                 foreach (var entity in entities)
                 {
-                    if (entity is BaseOven oven && oven.OwnerID == player.userID)
+                    if (entity is BaseOven oven && oven.OwnerID.ToString() == player.UserIDString && oven.ShortPrefabName.Equals("bbq"))
                     {
-                        oven.StartCooking();
+                        if (!oven.IsOn())
+                        {
+                            oven.StartCooking();
+                        }
                     }
                 }
             }
