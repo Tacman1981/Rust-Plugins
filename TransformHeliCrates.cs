@@ -18,7 +18,7 @@ using System.Linq;
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.2.3")]
+    [Info("TransformHeliCrates", "Tacman", "0.2.5")]
     [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
     public class TransformHeliCrates : RustPlugin
     {
@@ -79,39 +79,37 @@ namespace Oxide.Plugins
         private void CheckOwnerAndMove(BaseEntity entity)
         {
             if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
+
+            ulong ownerId = entity.OwnerID;
+            BasePlayer owner = BasePlayer.FindByID(ownerId);
+
+            if (owner == null || entity == null)
             {
-                ulong ownerId = entity.OwnerID;
-                BasePlayer owner = BasePlayer.FindByID(ownerId);
-
-                if (owner == null || entity == null)
-                {
-                    Puts($"No owner found for {entity}");
-                    return;
-                }
-
-                Vector3 playerPosition = owner.transform.position;
-
-                float randomX = UnityEngine.Random.Range(config.xMin, config.xMax);
-                float randomY = UnityEngine.Random.Range(2f, 4f);
-                float randomZ = UnityEngine.Random.Range(config.zMin, config.zMax);
-
-                entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
-
-                Rigidbody rb = entity.gameObject.GetComponent<Rigidbody>();
-                if (rb == null)
-                {
-                    rb = entity.gameObject.AddComponent<Rigidbody>();
-                }
-                rb.velocity = Vector3.zero;
-                rb.useGravity = true;
-                rb.isKinematic = false;
-                rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-                //rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX;
-                if (entity.ShortPrefabName.Equals("codelockedhackablecrate"))
-                    rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
-
-                entity.SendNetworkUpdate();
+                Puts($"No owner found for {entity}");
+                return;
             }
+
+            Vector3 playerPosition = owner.transform.position;
+
+            float randomX = UnityEngine.Random.Range(config.xMin, config.xMax);
+            float randomY = UnityEngine.Random.Range(2f, 4f);
+            float randomZ = UnityEngine.Random.Range(config.zMin, config.zMax);
+
+            entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
+
+            Rigidbody rb = entity.gameObject.GetComponent<Rigidbody>();
+            if (rb == null)
+            {
+                rb = entity.gameObject.AddComponent<Rigidbody>();
+            }
+
+            rb.velocity = Vector3.zero;
+            rb.useGravity = true;
+            rb.isKinematic = false;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            //rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX;
+
+            entity.SendNetworkUpdate();
 
             //Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
 
@@ -161,7 +159,7 @@ namespace Oxide.Plugins
             if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
             {
 
-                NextTick(() =>
+                timer.Once(0.1f, () =>
                 {
                     if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
                     {
