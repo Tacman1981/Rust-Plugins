@@ -1,4 +1,6 @@
 //Some changes to facepunch code has broken this 1. when it does work it has a delay when switching states.
+//Still trying to figure out why it desnt continue to work after restarts. we likely must kill the minicopter on initialize to ensure continuous functionality.
+//This is specifically designed for pve servers with personal minicopters.
 
 //Special thanks to MinicopterOptions developer for this method, I literally just used the code from that plugin to attach the light, and the method used to toggle the light on and off. now we have night lights on minicopters, and can use jet engine from skill tree with no interference.
 using System.Collections.Generic;
@@ -167,3 +169,4 @@ namespace Oxide.Plugins
         #endregion
     }
 }
+
