@@ -2,15 +2,19 @@ using Oxide.Core;
 using Oxide.Core.Plugins;
 using Oxide.Game.Rust.Cui;
 using UnityEngine;
+using System.Linq;
 
 namespace Oxide.Plugins
 {
-    [Info("Furnace No Ore Stop", "Tacman", "1.0.4")]
-    [Description("Stops furnaces when there are no more ores, now stops when owner goes offline")]
+    [Info("Furnace No Ore Stop", "Tacman", "1.0.0")]
+    [Description("Stops furnaces when there are no more ores, now stops when owner goes offline if permission 'onoff' granted")]
     public class FurnaceNoOreStop : RustPlugin
     {
+        private bool debug = false;
         private string usePerm = "furnacenoorestop.use";
         private string onOffPerm = "furnacenoorestop.onoff";
+
+        #region Setup
 
         void Init()
         {
@@ -18,19 +22,19 @@ namespace Oxide.Plugins
             permission.RegisterPermission(onOffPerm, this);
         }
 
+        #endregion
+
+        #region Hooks
+
         private void OnOvenCooked(BaseOven oven)
         {
-            if (oven == null || oven.inventory == null)
-                return;
+            if (oven == null || oven.inventory == null) return;
 
-            if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm))
-                return;
+            if (oven.ShortPrefabName.Contains("lantern") || oven.ShortPrefabName.Contains("bbq") || oven.ShortPrefabName.Contains("fire")) return;
 
-            if (oven.ShortPrefabName.Contains("lantern") || oven.ShortPrefabName.Contains("bbq") || oven.ShortPrefabName.Contains("fire"))
-                return;
+            if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm)) return;
 
             bool hasOres = false;
-
             foreach (Item item in oven.inventory.itemList)
             {
                 if (item.info.shortname.Contains("ore") || item.info.shortname.Contains("crude"))
@@ -43,73 +47,82 @@ namespace Oxide.Plugins
             if (!hasOres)
             {
                 oven.StopCooking();
-
-                BasePlayer player = BasePlayer.FindByID(oven.OwnerID);
-                if (player != null)
-                {
-                    //player.ChatMessage("Your cooking has stopped because there are no more cookables.");
-                }
+                if (debug)
+                    Puts($"Furnace owned by {BasePlayer.FindByID(oven.OwnerID)?.displayName} has been turned off as it has no more ores/crude.");
             }
         }
 
-        void OnItemAddedToContainer(ItemContainer container, Item item)
+        /*in here, it does not actually automatically turn on when the furnace already has existing items, so I use OnLootEntityEnd() to accomplish this.
+         I have enabled this again so that industrial automation works properly.*/
+        private void OnItemAddedToContainer(ItemContainer container, Item item)
         {
-            if (container?.entityOwner == null || item == null)
+            if (container == null || item == null)
                 return;
 
             BaseOven oven = container.entityOwner as BaseOven;
-            if (oven == null || (!oven.ShortPrefabName.Contains("furnace") && !oven.ShortPrefabName.Contains("refinery")))
-                return;
+            if (oven == null) return;
 
-            if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm))
-                return;
+            if (!oven.ShortPrefabName.Contains("furnace") && !oven.ShortPrefabName.Contains("refinery")) return;
 
-            if (item.info.shortname.Contains("crude") || item.info.shortname.Contains("ore"))
+            if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm)) return;
+
+            if ((item.info.shortname.Contains("crude") || item.info.shortname.Contains("ore")) && !oven.IsOn())
             {
-                if (!oven.IsOn())
-                {
-                    oven.StartCooking();
-
-                    BasePlayer player = BasePlayer.FindByID(oven.OwnerID);
-                    if (player != null)
-                    {
-                        //player.ChatMessage("Your cooking has resumed because cookable items were added.");
-                    }
-                }
+                oven.StartCooking();
+                if (debug)
+                    Puts($"Furnace owned by {BasePlayer.FindByID(oven.OwnerID)?.displayName} has been turned on as ore/crude was added.");
             }
         }
 
-        private void OnPlayerDisconnected(BasePlayer player)
+        private void OnLootEntityEnd(BasePlayer player, BaseOven oven)
         {
-            if (player != null && permission.UserHasPermission(player.UserIDString, onOffPerm))
+            if (oven == null) return;
+            if (!oven.ShortPrefabName.Contains("furnace") && !oven.ShortPrefabName.Contains("refinery")) return;
+            if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm)) return;
+
+            if (oven.inventory.itemList.Any(i => i.info.shortname.Contains("ore") || i.info.shortname.Contains("crude")) && !oven.IsOn())
             {
-                var entities = BaseNetworkable.serverEntities;
-                foreach (var entity in entities)
-                {
-                    if (entity is BaseOven oven && oven.OwnerID.ToString() == player.UserIDString && !oven.ShortPrefabName.Contains("fire"))
-                    {
-                        oven.StopCooking();
-                    }
-                }
+                oven.StartCooking();
+                if (debug)
+                    Puts($"Furnace owned by {BasePlayer.FindByID(oven.OwnerID)?.displayName} has been turned on as it has ores/crude inside.");
             }
         }
 
         private void OnPlayerConnected(BasePlayer player)
         {
-            if (player != null && permission.UserHasPermission(player.UserIDString, onOffPerm))
+            ToggleOvens(player, true);
+        }
+
+        private void OnPlayerDisconnected(BasePlayer player)
+        {
+            ToggleOvens(player, false);
+        }
+        #endregion
+
+        #region Helper
+
+        private void ToggleOvens(BasePlayer player, bool online)
+        {
+            if (player == null || !permission.UserHasPermission(player.UserIDString, onOffPerm)) return;
+
+            foreach (BaseOven oven in BaseNetworkable.serverEntities.OfType<BaseOven>())
             {
-                var entities = BaseNetworkable.serverEntities;
-                foreach (var entity in entities)
+                if (oven.OwnerID != player.userID) continue;
+
+                if (online && !oven.IsOn())
                 {
-                    if (entity is BaseOven oven && oven.OwnerID.ToString() == player.UserIDString && oven.ShortPrefabName.Equals("bbq"))
-                    {
-                        if (!oven.IsOn())
-                        {
-                            oven.StartCooking();
-                        }
-                    }
+                    oven.StartCooking();
+                    if (debug)
+                        Puts($"Furnace owned by {player.displayName} has been turned on as they connected.");
+                }
+                else if (!online && oven.IsOn())
+                {
+                    oven.StopCooking();
+                    if (debug)
+                        Puts($"Furnace owned by {player.displayName} has been turned off as they disconnected.");
                 }
             }
         }
+        #endregion
     }
 }
