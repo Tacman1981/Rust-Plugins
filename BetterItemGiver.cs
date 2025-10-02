@@ -19,21 +19,21 @@ namespace Oxide.Plugins
 
             if (args.Length < 2)
             {
-                Puts("Usage: giveitem <shortname> <amount>");
+                SendReply(player, "Usage: giveitem <shortname> <amount>");
                 return;
             }
 
             string shortname = args[0].ToLower();
             if (!int.TryParse(args[1], out int amount) || amount <= 0)
             {
-                Puts("Invalid amount.");
+                SendReply(player, "Invalid amount.");
                 return;
             }
 
             ItemDefinition def = ItemManager.FindItemDefinition(shortname);
             if (def == null)
             {
-                Puts($"Item '{shortname}' not found.");
+                SendReply(player, $"Item '{shortname}' not found.");
                 return;
             }
 
@@ -56,26 +56,27 @@ namespace Oxide.Plugins
         {
             BasePlayer player = arg.Player();
             string[] args = arg.Args;
+            if (player != null && !player.IsAdmin && player.isClient) return;
             if (args == null)
                 Puts("Command usage: giveitem {shortname} {amount}");
 
             if (args.Length < 2)
             {
-                Puts("Usage: giveitem <shortname> <amount>");
+                SendReply(player, "Usage: giveitem <shortname> <amount>");
                 return;
             }
 
             string shortname = args[0].ToLower();
             if (!int.TryParse(args[1], out int amount) || amount <= 0)
             {
-                Puts("Invalid amount.");
+                SendReply(player, "Invalid amount.");
                 return;
             }
 
             ItemDefinition def = ItemManager.FindItemDefinition(shortname);
             if (def == null)
             {
-                Puts($"Item '{shortname}' not found.");
+                SendReply(player, $"Item '{shortname}' not found.");
                 return;
             }
 
