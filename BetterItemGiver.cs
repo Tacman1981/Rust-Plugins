@@ -3,9 +3,11 @@ using Oxide.Core.Plugins;
 using System.Collections.Generic;
 using UnityEngine;
 
+//Should work in client console too, untested.
+
 namespace Oxide.Plugins
 {
-    [Info("Better Item Giver", "Tacman", "1.0.0")]
+    [Info("Better Item Giver", "Tacman", "1.1.0")]
     [Description("Gives a specified item and amount to all players including sleepers.")]
     public class BetterItemGiver : RustPlugin
     {
@@ -14,8 +16,9 @@ namespace Oxide.Plugins
         {
             BasePlayer player = arg.Player();
             string[] args = arg.Args;
+            if (player == null || !player.IsAdmin) return;
             if (args == null)
-                Puts("Command usage: giveitem {shortname} {amount}");
+                SendReply(player, "Command usage: giveitem {shortname} {amount}");
 
             if (args.Length < 2)
             {
@@ -56,7 +59,7 @@ namespace Oxide.Plugins
         {
             BasePlayer player = arg.Player();
             string[] args = arg.Args;
-            if (player != null && !player.IsAdmin && player.isClient) return;
+            if (player == null || !player.IsAdmin) return;
             if (args == null)
                 Puts("Command usage: giveitem {shortname} {amount}");
 
