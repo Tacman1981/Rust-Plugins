@@ -3,8 +3,6 @@ using Oxide.Core.Plugins;
 using System.Collections.Generic;
 using UnityEngine;
 
-//Console outputs now show the displayname of the items given instead of shortname.
-
 namespace Oxide.Plugins
 {
     [Info("Better Item Giver", "Tacman", "1.0.0")]
@@ -88,7 +86,7 @@ namespace Oxide.Plugins
                 count++;
             }
 
-            string msg = $"Gave {amount} x {def.displayName.english} to {count} sleepers.";
+            string msg = $"Gave {amount} x {def.displayName.english} to {count} players (online and asleep).";
             Puts(msg);
         }
 
