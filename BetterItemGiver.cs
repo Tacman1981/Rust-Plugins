@@ -7,7 +7,7 @@ namespace Oxide.Plugins
 {
     [Info("Easier Item Giver", "Tacman", "1.0.0")]
     [Description("Gives a specified item and amount to all players including sleepers.")]
-    public class GrantSleeperItems : RustPlugin
+    public class BetterItemGiver : RustPlugin
     {
         [ConsoleCommand("givesleep")]
         private void GiveSleepersCmd(ConsoleSystem.Arg arg)
