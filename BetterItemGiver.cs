@@ -3,6 +3,8 @@ using Oxide.Core.Plugins;
 using System.Collections.Generic;
 using UnityEngine;
 
+//Console outputs now show the displayname of the items given instead of shortname.
+
 namespace Oxide.Plugins
 {
     [Info("Better Item Giver", "Tacman", "1.0.0")]
