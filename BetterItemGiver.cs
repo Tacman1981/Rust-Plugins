@@ -47,7 +47,7 @@ namespace Oxide.Plugins
                 }
             }
 
-            string msg = $"Gave {amount} x {shortname} to {count} sleepers.";
+            string msg = $"Gave {amount} x {def.displayName.english} to {count} sleepers.";
             Puts(msg);
         }
 
@@ -86,7 +86,7 @@ namespace Oxide.Plugins
                 count++;
             }
 
-            string msg = $"Gave {amount} x {shortname} to {count} sleepers.";
+            string msg = $"Gave {amount} x {def.displayName.english} to {count} sleepers.";
             Puts(msg);
         }
 
