@@ -9,7 +9,7 @@ namespace Oxide.Plugins
     [Description("Gives a specified item and amount to all players including sleepers.")]
     public class BetterItemGiver : RustPlugin
     {
-        [ConsoleCommand("givesleep")]
+        [ConsoleCommand("givesleepers")]
         private void GiveSleepersCmd(ConsoleSystem.Arg arg)
         {
             BasePlayer player = arg.Player();
