@@ -3,8 +3,6 @@ using Oxide.Core.Plugins;
 using System.Collections.Generic;
 using UnityEngine;
 
-//Should work in client console too, untested.
-
 namespace Oxide.Plugins
 {
     [Info("Better Item Giver", "Tacman", "1.1.0")]
@@ -17,12 +15,9 @@ namespace Oxide.Plugins
             BasePlayer player = arg.Player();
             string[] args = arg.Args;
             if (player == null || !player.IsAdmin) return;
-            if (args == null)
-                SendReply(player, "Command usage: giveitem {shortname} {amount}");
-
-            if (args.Length < 2)
+            if (args == null || args.Length < 2)
             {
-                SendReply(player, "Usage: giveitem <shortname> <amount>");
+                SendReply(player, "Usage: givesleepers <shortname> <amount>");
                 return;
             }
 
@@ -60,12 +55,9 @@ namespace Oxide.Plugins
             BasePlayer player = arg.Player();
             string[] args = arg.Args;
             if (player == null || !player.IsAdmin) return;
-            if (args == null)
-                Puts("Command usage: giveitem {shortname} {amount}");
-
-            if (args.Length < 2)
+            if (args == null || args.Length < 2)
             {
-                SendReply(player, "Usage: giveitem <shortname> <amount>");
+                SendReply(player, "Usage: givesleepers <shortname> <amount>");
                 return;
             }
 
