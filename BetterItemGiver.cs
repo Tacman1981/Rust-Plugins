@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Better Item Giver", "Tacman", "1.0.0")]
+    [Info("Easier Item Giver", "Tacman", "1.0.0")]
     [Description("Gives a specified item and amount to all players including sleepers.")]
-    public class BetterItemGiver : RustPlugin
+    public class GrantSleeperItems : RustPlugin
     {
         [ConsoleCommand("givesleep")]
         private void GiveSleepersCmd(ConsoleSystem.Arg arg)
@@ -19,24 +19,21 @@ namespace Oxide.Plugins
 
             if (args.Length < 2)
             {
-                if (player != null) player.ChatMessage("Usage: giveitem <shortname> <amount>");
-                else Puts("Usage: giveitem <shortname> <amount>");
+                Puts("Usage: giveitem <shortname> <amount>");
                 return;
             }
 
             string shortname = args[0].ToLower();
             if (!int.TryParse(args[1], out int amount) || amount <= 0)
             {
-                if (player != null) player.ChatMessage("Invalid amount.");
-                else Puts("Invalid amount.");
+                Puts("Invalid amount.");
                 return;
             }
 
             ItemDefinition def = ItemManager.FindItemDefinition(shortname);
             if (def == null)
             {
-                if (player != null) player.ChatMessage($"Item '{shortname}' not found.");
-                else Puts($"Item '{shortname}' not found.");
+                Puts($"Item '{shortname}' not found.");
                 return;
             }
 
@@ -51,8 +48,7 @@ namespace Oxide.Plugins
             }
 
             string msg = $"Gave {amount} x {shortname} to {count} sleepers.";
-            if (player != null) player.ChatMessage(msg);
-            else Puts(msg);
+            Puts(msg);
         }
 
         [ConsoleCommand("givetoall")]
@@ -65,24 +61,21 @@ namespace Oxide.Plugins
 
             if (args.Length < 2)
             {
-                if (player != null) player.ChatMessage("Usage: giveitem <shortname> <amount>");
-                else Puts("Usage: giveitem <shortname> <amount>");
+                Puts("Usage: giveitem <shortname> <amount>");
                 return;
             }
 
             string shortname = args[0].ToLower();
             if (!int.TryParse(args[1], out int amount) || amount <= 0)
             {
-                if (player != null) player.ChatMessage("Invalid amount.");
-                else Puts("Invalid amount.");
+                Puts("Invalid amount.");
                 return;
             }
 
             ItemDefinition def = ItemManager.FindItemDefinition(shortname);
             if (def == null)
             {
-                if (player != null) player.ChatMessage($"Item '{shortname}' not found.");
-                else Puts($"Item '{shortname}' not found.");
+                Puts($"Item '{shortname}' not found.");
                 return;
             }
 
@@ -94,8 +87,7 @@ namespace Oxide.Plugins
             }
 
             string msg = $"Gave {amount} x {shortname} to {count} sleepers.";
-            if (player != null) player.ChatMessage(msg);
-            else Puts(msg);
+            Puts(msg);
         }
 
         private void GiveItemToPlayer(BasePlayer target, ItemDefinition def, int amount)
