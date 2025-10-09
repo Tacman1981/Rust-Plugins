@@ -14,7 +14,7 @@ using System;
 using System.Linq;
 
 
-//Bug in the OnEntityKill being looked into, maybe this is fixed now..
+//This is an upgrade to transform heli crates, it now includes bradley crates too.
 
 namespace Oxide.Plugins
 {
@@ -384,4 +384,5 @@ namespace Oxide.Plugins
 
         #endregion
     }
+
 }
