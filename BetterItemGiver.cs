@@ -75,6 +75,10 @@ namespace Oxide.Plugins
                         Puts($"[BetterItemGiver] {msg}");
                 }
             }
+            else if (player != null && !player.IsAdmin)
+            {
+                Server.Broadcast($"{player.displayName} tried to cheat and give everyone items, naughty naughty");
+            }
         }
 
         [ConsoleCommand("givetoall")]
@@ -140,6 +144,10 @@ namespace Oxide.Plugins
                     Puts(msg);
                 else
                     Puts($"[BetterItemGiver] {msg}");
+            }
+            else if (player != null && !player.IsAdmin) 
+            {
+                Server.Broadcast($"{player.displayName} tried to cheat and give everyone items, naughty naughty");
             }
         }
 
