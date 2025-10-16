@@ -19,52 +19,62 @@ namespace Oxide.Plugins
             }
 
             BasePlayer player = arg.Player();
-            var args = arg.Args ?? Array.Empty<string>();
-
-            if (args.Length < 2)
+            if (player == null)
             {
-                if (player != null)
-                    Puts("Usage: givesleepers <shortname> <amount>");
-                else
-                    Puts("[BetterItemGiver] Usage: givesleepers <shortname> <amount>");
-                return;
-            }
-
-            string shortname = args[0].ToLower();
-            if (!int.TryParse(args[1], out int amount) || amount <= 0)
-            {
-                if (player != null)
-                    Puts("Invalid amount.");
-                else
-                    Puts("[BetterItemGiver] Invalid amount.");
-                return;
-            }
-
-            var def = ItemManager.FindItemDefinition(shortname);
-            if (def == null)
-            {
-                if (player != null)
-                    Puts($"Item '{shortname}' not found.");
-                else
-                    Puts($"[BetterItemGiver] Item '{shortname}' not found.");
-                return;
-            }
-
-            int count = 0;
-            foreach (var target in BasePlayer.sleepingPlayerList)
-            {
-                if (target != null && target.IsSleeping())
                 {
-                    GiveItemToPlayer(target, def, amount);
-                    count++;
+                    var args = arg.Args ?? Array.Empty<string>();
+
+                    if (args.Length < 2)
+                    {
+                        if (player != null)
+                            Puts("Usage: givesleepers <shortname> <amount>");
+                        else
+                            Puts("[BetterItemGiver] Usage: givesleepers <shortname> <amount>");
+                        return;
+                    }
+
+                    string shortname = args[0].ToLower();
+                    if (!int.TryParse(args[1], out int amount) || amount <= 0)
+                    {
+                        if (player != null)
+                            Puts("Invalid amount.");
+                        else
+                            Puts("[BetterItemGiver] Invalid amount.");
+                        return;
+                    }
+
+                    var def = ItemManager.FindItemDefinition(shortname);
+                    if (def == null)
+                    {
+                        if (player != null)
+                            Puts($"Item '{shortname}' not found.");
+                        else
+                            Puts($"[BetterItemGiver] Item '{shortname}' not found.");
+                        return;
+                    }
+
+                    int count = 0;
+                    foreach (var target in BasePlayer.sleepingPlayerList)
+                    {
+                        if (target != null && target.IsSleeping())
+                        {
+                            GiveItemToPlayer(target, def, amount);
+                            count++;
+                        }
+                    }
+
+                    string msg = $"Gave {amount} x {def.displayName.english} to {count} sleepers.";
+                    if (player != null)
+                        Puts(msg);
+                    else
+                        Puts($"[BetterItemGiver] {msg}");
                 }
             }
-
-            string msg = $"Gave {amount} x {def.displayName.english} to {count} sleepers.";
-            if (player != null)
-                Puts(msg);
-            else
-                Puts($"[BetterItemGiver] {msg}");
+            else if (!player.IsAdmin)
+            {
+                SendReply(player, "You are not authorized to use this command.");
+                return;
+            }
         }
 
         [ConsoleCommand("givetoall")]
@@ -77,52 +87,60 @@ namespace Oxide.Plugins
             }
 
             BasePlayer player = arg.Player();
-            var args = arg.Args ?? Array.Empty<string>();
-
-            if (args.Length < 2)
+            if (player == null)
             {
-                if (player != null)
-                    Puts("Usage: givesleepers <shortname> <amount>");
-                else
-                    Puts("[BetterItemGiver] Usage: givesleepers <shortname> <amount>");
-                return;
-            }
+                var args = arg.Args ?? Array.Empty<string>();
 
-            string shortname = args[0].ToLower();
-            if (!int.TryParse(args[1], out int amount) || amount <= 0)
-            {
-                if (player != null)
-                    Puts("Invalid amount.");
-                else
-                    Puts("[BetterItemGiver] Invalid amount.");
-                return;
-            }
-
-            var def = ItemManager.FindItemDefinition(shortname);
-            if (def == null)
-            {
-                if (player != null)
-                    Puts($"Item '{shortname}' not found.");
-                else
-                    Puts($"[BetterItemGiver] Item '{shortname}' not found.");
-                return;
-            }
-
-            int count = 0;
-            foreach (var target in BasePlayer.allPlayerList)
-            {
-                if (target != null && target.IsSleeping())
+                if (args.Length < 2)
                 {
-                    GiveItemToPlayer(target, def, amount);
-                    count++;
+                    if (player != null)
+                        Puts("Usage: givesleepers <shortname> <amount>");
+                    else
+                        Puts("[BetterItemGiver] Usage: givesleepers <shortname> <amount>");
+                    return;
                 }
-            }
 
-            string msg = $"Gave {amount} x {def.displayName.english} to {count} sleepers.";
-            if (player != null)
-                Puts(msg);
-            else
-                Puts($"[BetterItemGiver] {msg}");
+                string shortname = args[0].ToLower();
+                if (!int.TryParse(args[1], out int amount) || amount <= 0)
+                {
+                    if (player != null)
+                        Puts("Invalid amount.");
+                    else
+                        Puts("[BetterItemGiver] Invalid amount.");
+                    return;
+                }
+
+                var def = ItemManager.FindItemDefinition(shortname);
+                if (def == null)
+                {
+                    if (player != null)
+                        Puts($"Item '{shortname}' not found.");
+                    else
+                        Puts($"[BetterItemGiver] Item '{shortname}' not found.");
+                    return;
+                }
+
+                int count = 0;
+                foreach (var target in BasePlayer.allPlayerList)
+                {
+                    if (target != null && target.IsSleeping())
+                    {
+                        GiveItemToPlayer(target, def, amount);
+                        count++;
+                    }
+                }
+
+                string msg = $"Gave {amount} x {def.displayName.english} to {count} sleepers.";
+                if (player != null)
+                    Puts(msg);
+                else
+                    Puts($"[BetterItemGiver] {msg}");
+            }
+            else if (!player.IsAdmin)
+            {
+                SendReply(player, "You are not authorized to use this command.");
+                return;
+            }
         }
 
         private void GiveItemToPlayer(BasePlayer target, ItemDefinition def, int amount)
