@@ -19,7 +19,12 @@ namespace Oxide.Plugins
             }
 
             BasePlayer player = arg.Player();
-            if (player == null)
+            if (player != null && !player.IsAdmin)
+            {
+                SendReply(player, "You are not authorized to use this command.");
+                return;
+            }
+            if (player == null || player.IsAdmin)
             {
                 {
                     var args = arg.Args ?? Array.Empty<string>();
@@ -70,11 +75,6 @@ namespace Oxide.Plugins
                         Puts($"[BetterItemGiver] {msg}");
                 }
             }
-            else if (!player.IsAdmin)
-            {
-                SendReply(player, "You are not authorized to use this command.");
-                return;
-            }
         }
 
         [ConsoleCommand("givetoall")]
@@ -87,7 +87,12 @@ namespace Oxide.Plugins
             }
 
             BasePlayer player = arg.Player();
-            if (player == null)
+            if (player != null && !player.IsAdmin)
+            {
+                SendReply(player, "You are not authorized to use this command.");
+                return;
+            }
+            if (player == null || player.IsAdmin)
             {
                 var args = arg.Args ?? Array.Empty<string>();
 
@@ -135,11 +140,6 @@ namespace Oxide.Plugins
                     Puts(msg);
                 else
                     Puts($"[BetterItemGiver] {msg}");
-            }
-            else if (!player.IsAdmin)
-            {
-                SendReply(player, "You are not authorized to use this command.");
-                return;
             }
         }
 
