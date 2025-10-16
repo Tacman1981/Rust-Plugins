@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Better Item Giver", "Tacman", "1.1.0")]
+    [Info("Better Item Giver", "Tacman", "1.2.0")]
     [Description("Gives a specified item and amount to all players including sleepers.")]
     public class BetterItemGiver : RustPlugin
     {
@@ -132,7 +132,7 @@ namespace Oxide.Plugins
                 int count = 0;
                 foreach (var target in BasePlayer.allPlayerList)
                 {
-                    if (target != null && target.IsSleeping())
+                    if (target != null)
                     {
                         GiveItemToPlayer(target, def, amount);
                         count++;
