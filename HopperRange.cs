@@ -1,4 +1,5 @@
-﻿using Oxide.Core;
+//this is the simple version of Simple Hopper Controller
+using Oxide.Core;
 using UnityEngine;
 
 namespace Oxide.Plugins
@@ -125,3 +126,4 @@ namespace Oxide.Plugins
         #endregion
     }
 }
+
