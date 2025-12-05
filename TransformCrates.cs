@@ -14,7 +14,7 @@ using System;
 using System.Linq;
 
 
-//This is an upgrade to transform heli crates, it now includes bradley crates too.
+//This is an upgrade to transform heli crates, it now includes bradley crates too. also a command for each crate type .
 
 namespace Oxide.Plugins
 {
@@ -386,3 +386,4 @@ namespace Oxide.Plugins
     }
 
 }
+
