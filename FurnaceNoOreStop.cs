@@ -5,16 +5,18 @@ using UnityEngine;
 using System.Linq;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 
 //Bunch of optimizations and some minor changes for version 1.1.1
 
 namespace Oxide.Plugins
 {
-    [Info("Furnace No Ore Stop", "Tacman", "1.1.1")]
+    [Info("Furnace No Ore Stop", "Tacman", "1.2.0")]
     [Description("Stops furnaces when there are no more ores, now stops when owner goes offline if permission 'onoff' granted")]
     public class FurnaceNoOreStop : RustPlugin
     {
         private string usePerm = "furnacenoorestop.use";
+        public Dictionary<ulong, List<BaseOven>> cookers = new();
 
         #region Config
         static Configuration config;
@@ -69,24 +71,60 @@ namespace Oxide.Plugins
         #endregion
 
         #region Hooks
+        void OnServerInitialized()
+        {
+            cookers.Clear();
+
+            foreach (BaseOven oven in BaseNetworkable.serverEntities.OfType<BaseOven>())
+            {
+                if (oven.OwnerID == 0) continue;
+                if (!oven.ShortPrefabName.Contains("furnace") && !oven.ShortPrefabName.Contains("refinery")) continue;
+
+                if (!cookers.TryGetValue(oven.OwnerID, out var list))
+                    cookers[oven.OwnerID] = list = new List<BaseOven>();
+
+                if (!list.Contains(oven))
+                    list.Add(oven);
+            }
+        }
+
+        void OnEntitySpawned(BaseNetworkable ent)
+        {
+            if (ent is not BaseOven oven) return;
+            if (oven.OwnerID == 0) return;
+            if (!oven.ShortPrefabName.Contains("furnace") && !oven.ShortPrefabName.Contains("refinery")) return;
+
+            if (!cookers.TryGetValue(oven.OwnerID, out var list))
+                cookers[oven.OwnerID] = list = new List<BaseOven>();
+
+            if (!list.Contains(oven))
+                list.Add(oven);
+            if (config.debug)
+                Puts($"Added {oven.ShortPrefabName} for owner {BasePlayer.FindByID(oven.OwnerID)?.displayName}");
+        }
+
+        void OnEntityKill(BaseNetworkable ent)
+        {
+            if (ent is not BaseOven oven) return;
+
+            if (!cookers.TryGetValue(oven.OwnerID, out var list)) return;
+
+            list.Remove(oven);
+            if (list.Count == 0)
+                cookers.Remove(oven.OwnerID);
+        }
 
         private void OnOvenCooked(BaseOven oven)
         {
             if (oven == null || oven.inventory == null) return;
 
-            if (!oven.ShortPrefabName.Contains("furnace") && !oven.ShortPrefabName.Contains("refinery")) return; // I have changed this to be a whitelist instead of blacklist
+            if (oven.ShortPrefabName != "furnace" && oven.ShortPrefabName != "legacy_furnace" && oven.ShortPrefabName != "electricfurnace.deployed" && oven.ShortPrefabName != "furnace.large" && oven.ShortPrefabName != "refinery_small_deployed")
+                return;
 
             if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm)) return;
 
-            bool hasOres = false; // Used to check if there are items inside the furnace or refinery
-            foreach (Item item in oven.inventory.itemList)
-            {
-                if (item.info.shortname.Contains("ore") || item.info.shortname.Contains("crude"))
-                {
-                    hasOres = true; // Changing it true only if it has cookables inside
-                    break;
-                }
-            }
+            var ores = new[] { "metal.ore", "hq.metal.ore", "sulfur.ore", "crude.oil" };
+            bool hasOres = oven.inventory.itemList.Any(item => ores.Contains(item.info.shortname));
 
             if (!hasOres)
             {
@@ -150,25 +188,27 @@ namespace Oxide.Plugins
         private void ToggleOvens(BasePlayer player, bool online)
         {
             if (player == null) return;
+            if (!cookers.TryGetValue(player.userID, out var ovens)) return;
 
-            foreach (BaseOven oven in BaseNetworkable.serverEntities.OfType<BaseOven>())
+            foreach (BaseOven oven in ovens)
             {
-                if (oven.OwnerID != player.userID) continue;
+                if (oven == null) continue;
 
                 if (online && !oven.IsOn())
                 {
                     oven.StartCooking();
                     if (config.debug)
-                        Puts($"Furnace owned by {player.displayName} has been turned on as they connected.");
+                        Puts($"{oven.ShortPrefabName} owned by {player.displayName} turned on.");
                 }
                 else if (!online && oven.IsOn())
                 {
                     oven.StopCooking();
                     if (config.debug)
-                        Puts($"Furnace owned by {player.displayName} has been turned off as they disconnected.");
+                        Puts($"{oven.ShortPrefabName} owned by {player.displayName} turned off.");
                 }
             }
         }
+
         #endregion
     }
-}
+} 
