@@ -9,17 +9,18 @@ using System.Collections.Generic;
 
 //Bunch of optimizations and some minor changes for version 1.1.1
 //Bunch more optimzation for 1.2.1
+//1.2.2 Checks for ores and furnaces now use HashSet for faster lookups
 //Might add more configurable settings in the future. Potentially the list of BaseOvens affected and the cookable types.
 
 namespace Oxide.Plugins
 {
-    [Info("Furnace No Ore Stop", "Tacman", "1.2.2")]
+    [Info("Furnace No Ore Stop", "Tacman", "1.3.0")]
     [Description("Stops furnaces when there are no more ores, now stops when owner goes offline if permission 'onoff' granted")]
     public class FurnaceNoOreStop : RustPlugin
     {
         private string usePerm = "furnacenoorestop.use";
-        public Dictionary<ulong, List<BaseOven>> cookers = new(); //This is to keep track of player ovens, if config setting for on and off are enabled. It also keeps track for turning off when no more ores or crude.
-        private static readonly HashSet<string> checkOvens = new() //to keep track of all valid furnace and refinery prefab names
+        private Dictionary<ulong, List<BaseOven>> cookers = new(); //This is to keep track of player ovens, if config setting for on and off are enabled. It also keeps track for turning off when no more ores or crude.
+        /*private static readonly HashSet<string> checkOvens = new() //to keep track of all valid furnace and refinery prefab names
         {
             "furnace",
             "furnace.small",
@@ -28,13 +29,21 @@ namespace Oxide.Plugins
             "electricfurnace.deployed",
             "refinery_small_deployed",
             "refinery"
-        };
+        };*/
         private static readonly HashSet<string> checkOres = new()
         {
             "metal.ore",
             "hq.metal.ore",
             "sulfur.ore",
             "crude.oil"
+        };
+        private static readonly HashSet<uint> prefabID = new()
+        {
+            3808299817, //electric furnace deployed
+            2931042549, //regular furnace deployed
+            2013224025, //legacy furnace deployed
+            1374462671, //large furnace deployed
+            1057236622 //oil refinery deployed
         };
         #region Config
         static Configuration config;
@@ -96,7 +105,7 @@ namespace Oxide.Plugins
             foreach (BaseOven oven in BaseNetworkable.serverEntities.OfType<BaseOven>()) //Only doing this once at server start to populate the dictionary, i prefer this over saving data, it is much more accurate this way.
             {
                 if (oven.OwnerID == 0) continue;
-                if (!checkOvens.Contains(oven.ShortPrefabName)) return; //only care about furnaces and refineries, checks full prefabname when doing on and off checks
+                if (!prefabID.Contains(oven.prefabID)) continue; //only care about furnaces and refineries, checks prefab id now
 
                 if (!cookers.TryGetValue(oven.OwnerID, out var list))
                     cookers[oven.OwnerID] = list = new List<BaseOven>();
@@ -110,7 +119,7 @@ namespace Oxide.Plugins
         {
             if (oven == null) return;
             if (oven.OwnerID == 0) return;
-            if (!checkOvens.Contains(oven.ShortPrefabName)) return;
+            if (!prefabID.Contains(oven.prefabID)) return;
 
             if (!cookers.TryGetValue(oven.OwnerID, out var list))
                 cookers[oven.OwnerID] = list = new List<BaseOven>();
@@ -135,7 +144,7 @@ namespace Oxide.Plugins
         {
             if (oven == null || oven.inventory == null) return;
 
-            if (!checkOvens.Contains(oven.ShortPrefabName)) return;
+            if (!prefabID.Contains(oven.prefabID)) return;
 
             if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm)) return;
 
@@ -149,11 +158,20 @@ namespace Oxide.Plugins
                 }
             }
 
-            if (hasOres && !oven.IsOn())
+            if (hasOres)
             {
-                oven.StartCooking();
+                if (!oven.IsOn())
+                {
+                    oven.StartCooking();
+                    if (config.debug)
+                        Puts($"Furnace owned by {BasePlayer.FindByID(oven.OwnerID)?.displayName} has been turned on as ore/crude was added.");
+                }
+            }
+            else
+            {
+                oven.StopCooking();
                 if (config.debug)
-                    Puts($"Furnace owned by {BasePlayer.FindByID(oven.OwnerID)?.displayName} has been turned on as ore/crude was added.");
+                    Puts($"Furnace owned by {BasePlayer.FindByID(oven.OwnerID)?.displayName} has been turned off as it has no more ores/crude inside.");
             }
         }
 
@@ -167,7 +185,7 @@ namespace Oxide.Plugins
             BaseOven oven = container.entityOwner as BaseOven;
             if (oven == null) return;
             if (!checkOres.Contains(item.info.shortname)) return;
-
+            if (!prefabID.Contains(oven.prefabID)) return;
             if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm)) return;
 
             if (!oven.IsOn())
@@ -181,7 +199,7 @@ namespace Oxide.Plugins
         private void OnLootEntityEnd(BasePlayer player, BaseOven oven)
         {
             if (oven == null) return;
-            if (!checkOvens.Contains(oven.ShortPrefabName)) return;
+            if (!prefabID.Contains(oven.prefabID)) return;
             if (!permission.UserHasPermission(oven.OwnerID.ToString(), usePerm)) return;
 
             if (!oven.IsOn())
@@ -190,6 +208,8 @@ namespace Oxide.Plugins
                 if (config.debug)
                     Puts($"Furnace owned by {BasePlayer.FindByID(oven.OwnerID)?.displayName} has been turned on as it has ores/crude inside.");
             }
+            if(config.debug)
+                Puts($"{player.displayName} looted furnace with prefab id {oven.prefabID}");
         }
 
         private void OnPlayerConnected(BasePlayer player)
