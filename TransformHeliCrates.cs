@@ -41,13 +41,10 @@ namespace Oxide.Plugins
         {
             playerOptInStatus = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, bool>>(dataFilePath) ?? new Dictionary<ulong, bool>();
 
-            foreach (var playerId in playerOptInStatus.Keys.ToList())
+            foreach (var player in BasePlayer.activePlayerList.Concat(BasePlayer.sleepingPlayerList))
             {
-                if (!playerOptInStatus.ContainsKey(playerId))
-                {
-                    playerOptInStatus[playerId] = true;
-                    SaveOptInData();
-                }
+                if (!playerOptInStatus.ContainsKey(player.userID))
+                    playerOptInStatus[player.userID] = true;
             }
         }
 
@@ -93,7 +90,7 @@ namespace Oxide.Plugins
 
             if (owner == null || entity == null)
             {
-                Puts($"No owner found for {entity}");
+                //Puts($"No owner found for {entity}");
                 return;
             }
 
@@ -121,7 +118,7 @@ namespace Oxide.Plugins
 
             //Puts($"Moved {entity.ShortPrefabName} to {owner.displayName}'s position: {entity.transform.position}");
 
-            ulong crateId = entity.net?.ID.Value ?? 0;
+            uint crateId = (uint)(entity.net?.ID.Value ?? 0);
 
             if (crateId != 0 && !crateTimers.ContainsKey((uint)crateId))
             {
@@ -144,16 +141,14 @@ namespace Oxide.Plugins
         void OnUserPermissionGranted(string id, string permName)
         {
             if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(permName)) return;
-
-            if (permName.Equals(usePerm))
+            if (permName.Equals(usePerm) || permName.Equals(usePerm2))
             {
                 if (ulong.TryParse(id, out ulong userId))
                 {
-                    if (!playerOptInStatus.ContainsKey(userId) || !playerOptInStatus[userId])
+                    if (!playerOptInStatus.TryGetValue(userId, out bool isOptedIn) || !isOptedIn)
                     {
                         playerOptInStatus[userId] = true;
                         SaveOptInData();
-                        //Puts($"Player {userId} has been opted in because they were granted the {usePerm} permission.");
                     }
                 }
                 else
@@ -164,11 +159,12 @@ namespace Oxide.Plugins
         }
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (entity != null && ((entity.prefabID == hcratePrefabID || entity.prefabID == codelockPrefabID) || entity.prefabID == bcratePrefabID))
+            if (entity != null && (entity.prefabID == hcratePrefabID || entity.prefabID == codelockPrefabID || entity.prefabID == bcratePrefabID))
             {
 
-                timer.Once(0.5f, () =>
+                timer.Once(0.1f, () =>
                 {
+                    if (entity == null || entity.IsDestroyed) return;
                     if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
                     {
                         //player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
@@ -191,10 +187,11 @@ namespace Oxide.Plugins
             }
         }
 
-        void OnEntityKill(BaseNetworkable entity)
+        void OnEntityKill(BaseEntity entity)
         {
-            if (entity is StorageContainer crate && (entity.prefabID == hcratePrefabID || entity.prefabID == codelockPrefabID) || (entity.prefabID == bcratePrefabID))
+            if (entity is StorageContainer crate)
             {
+                if (crate.prefabID != hcratePrefabID && crate.prefabID != codelockPrefabID && crate.prefabID != bcratePrefabID) return;
                 if (crateTimers.ContainsKey((uint)entity.net.ID.Value))
                 {
                     crateTimers[(uint)entity.net.ID.Value]?.Destroy();
@@ -241,9 +238,9 @@ namespace Oxide.Plugins
             }
 
             int movedCount = 0;
-            float moveRadius = 30f; // Define the radius for moving crates
+            float moveRadius = 40f; // Define the radius for moving crates
 
-            foreach (BaseEntity crate in crates)
+            foreach (StorageContainer crate in crates)
             {
                 float distance = Vector3.Distance(crate.transform.position, player.eyes.position);
 
@@ -300,7 +297,7 @@ namespace Oxide.Plugins
             int movedCount = 0;
             float moveRadius = 40f; // Define the radius for moving crates from
 
-            foreach (BaseEntity crate in crates)
+            foreach (StorageContainer crate in crates)
             {
                 float distance = Vector3.Distance(crate.transform.position, player.eyes.position);
 
@@ -317,7 +314,7 @@ namespace Oxide.Plugins
             }
             else
             {
-                player.ChatMessage($"Moved {movedCount}  to your position.");
+                player.ChatMessage($"Moved {movedCount} crate(s) to your position.");
             }
 
             lastCommandUsage[player.userID] = DateTime.Now;
@@ -367,6 +364,8 @@ namespace Oxide.Plugins
                 coolDown = 10,
                 zMin = -5f,
                 zMax = 5f,
+                yMin = 1f,
+                yMax = 2f,
                 xMin = -5f,
                 xMax = 5f,
                 crateDespawn = 3600f
