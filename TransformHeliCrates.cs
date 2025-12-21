@@ -15,18 +15,25 @@ using System.Linq;
 
 
 //Bug in the OnEntityKill being looked into, maybe this is fixed now..
+//Crates despawn timer added in 0.2.5
+//Added new position graber for player eyes in 0.2.6 since carbon acts weird with player.transform.position.
+//Changed crate checks to use prefab ID instead of string matching in 0.3.0 for better performance.
 
 namespace Oxide.Plugins
 {
-    [Info("TransformHeliCrates", "Tacman", "0.2.5")]
-    [Description("Moves heli crates to the player who destroyed the helicopter, with player opt-in.")]
-    public class TransformHeliCrates : RustPlugin
+    [Info("TransformCrates", "Tacman", "0.3.0")]
+    [Description("Moves heli and bradley crates to the relevant owner on kill, with player opt-in.")]
+    public class TransformCrates : RustPlugin
     {
         private Dictionary<ulong, DateTime> lastCommandUsage = new Dictionary<ulong, DateTime>();
         private Dictionary<ulong, bool> playerOptInStatus = new Dictionary<ulong, bool>();
-        private const string PermissionBlockCommand = "transformhelicrates.block";
-        private const string dataFilePath = "TransformHeliCrates/TransformHeliCrates";
-        private const string usePerm = "transformhelicrates.use";
+        private const string PermissionBlockCommand = "transformcrates.block";
+        private const string dataFilePath = "TransformCrates/TransformCrates";
+        private const string usePerm = "transformcrates.hcrate";
+        private const string usePerm2 = "transformcrates.bcrate";
+        private uint hcratePrefabID = 1314849795;
+        private uint bcratePrefabID = 1737870479;
+        private uint codelockPrefabID = 209286362;
 
         #region Data Initialization
 
@@ -70,6 +77,7 @@ namespace Oxide.Plugins
         {
             permission.RegisterPermission(usePerm, this);
             permission.RegisterPermission(PermissionBlockCommand, this);
+            permission.RegisterPermission(usePerm2, this);
             LoadOptInData();
         }
 
@@ -78,7 +86,7 @@ namespace Oxide.Plugins
         #region Helper Method
         private void CheckOwnerAndMove(BaseEntity entity)
         {
-            if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm)) return;
+            if (!permission.UserHasPermission(entity.OwnerID.ToString(), usePerm) && !permission.UserHasPermission(entity.OwnerID.ToString(), usePerm2)) return;
 
             ulong ownerId = entity.OwnerID;
             BasePlayer owner = BasePlayer.FindByID(ownerId);
@@ -89,10 +97,10 @@ namespace Oxide.Plugins
                 return;
             }
 
-            Vector3 playerPosition = owner.transform.position;
+            Vector3 playerPosition = owner.eyes.position;
 
             float randomX = UnityEngine.Random.Range(config.xMin, config.xMax);
-            float randomY = UnityEngine.Random.Range(2f, 4f);
+            float randomY = UnityEngine.Random.Range(config.yMin, config.yMax);
             float randomZ = UnityEngine.Random.Range(config.zMin, config.zMax);
 
             entity.transform.position = playerPosition + new Vector3(randomX, randomY, randomZ);
@@ -156,18 +164,28 @@ namespace Oxide.Plugins
         }
         void OnEntitySpawned(BaseEntity entity)
         {
-            if (entity != null && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
+            if (entity != null && ((entity.prefabID == hcratePrefabID || entity.prefabID == codelockPrefabID) || entity.prefabID == bcratePrefabID))
             {
 
-                timer.Once(0.1f, () =>
+                timer.Once(0.5f, () =>
                 {
                     if (!playerOptInStatus.TryGetValue(entity.OwnerID, out bool isOptedIn) || !isOptedIn)
                     {
                         //player.ChatMessage("You have not opted in to use this command. Type /cratetoggle <true> to enable crate transform.");
                         return;
                     }
+                    string ownerId = entity.OwnerID.ToString();
+                    uint prefab = entity.prefabID;
 
-                    CheckOwnerAndMove(entity);
+                    if (
+                        (permission.UserHasPermission(ownerId, usePerm) &&
+                            (prefab == hcratePrefabID || prefab == codelockPrefabID)) ||
+                        (permission.UserHasPermission(ownerId, usePerm2) &&
+                            (prefab == bcratePrefabID || prefab == codelockPrefabID))
+                    )
+                    {
+                        CheckOwnerAndMove(entity);
+                    }
                 });
 
             }
@@ -175,14 +193,15 @@ namespace Oxide.Plugins
 
         void OnEntityKill(BaseNetworkable entity)
         {
-            if (entity is BaseEntity baseEntity && baseEntity is StorageContainer crate && (entity.ShortPrefabName == "heli_crate" || entity.ShortPrefabName == "codelockedhackablecrate"))
+            if (entity is StorageContainer crate && (entity.prefabID == hcratePrefabID || entity.prefabID == codelockPrefabID) || (entity.prefabID == bcratePrefabID))
             {
-                if (crateTimers.ContainsKey((uint)baseEntity.net.ID.Value))
+                if (crateTimers.ContainsKey((uint)entity.net.ID.Value))
                 {
-                    crateTimers[(uint)baseEntity.net.ID.Value]?.Destroy();
-                    crateTimers.Remove((uint)baseEntity.net.ID.Value);
-                    //Puts($"Removed despawn timer for crate with ID: {baseEntity.net.ID.Value}");
+                    crateTimers[(uint)entity.net.ID.Value]?.Destroy();
+                    crateTimers.Remove((uint)entity.net.ID.Value);
+                    //Puts($"Removed despawn timer for crate with ID: {entity.prefabID}");
                 }
+                //Puts($"crate is {entity.prefabID}");
             }
         }
 
@@ -191,7 +210,7 @@ namespace Oxide.Plugins
 
         #region Commands
 
-        [ChatCommand("crates")]
+        [ChatCommand("hcrates")]
         private void MoveAllCrates(BasePlayer player, string command, string[] args)
         {
             if (permission.UserHasPermission(player.UserIDString, PermissionBlockCommand) || !permission.UserHasPermission(player.UserIDString, usePerm))
@@ -209,7 +228,7 @@ namespace Oxide.Plugins
             List<BaseEntity> crates = new List<BaseEntity>();
             foreach (BaseEntity entity in BaseEntity.serverEntities)
             {
-                if (entity is BaseEntity crate && (crate.ShortPrefabName == "heli_crate" || crate.ShortPrefabName == "codelockedhackablecrate"))
+                if (entity is BaseEntity crate && (crate.prefabID == codelockPrefabID || crate.prefabID == hcratePrefabID))
                 {
                     crates.Add(crate);
                 }
@@ -222,16 +241,16 @@ namespace Oxide.Plugins
             }
 
             int movedCount = 0;
-            float moveRadius = 20f; // Define the radius for moving crates
+            float moveRadius = 30f; // Define the radius for moving crates
 
             foreach (BaseEntity crate in crates)
             {
-                float distance = Vector3.Distance(crate.transform.position, player.transform.position);
+                float distance = Vector3.Distance(crate.transform.position, player.eyes.position);
 
                 // Check if the crate is within the defined radius
                 if (distance <= moveRadius)
                 {
-                    CheckOwnerAndMove(crate); // Move the crate
+                    CheckOwnerAndMove(crate); // Move the crate if it has an owner, and only to the owners position.
                     movedCount++;
                 }
             }
@@ -243,6 +262,62 @@ namespace Oxide.Plugins
             else
             {
                 player.ChatMessage($"Moved {movedCount} crate(s) to your position.");
+            }
+
+            lastCommandUsage[player.userID] = DateTime.Now;
+        }
+
+        [ChatCommand("bcrates")]
+        private void MoveBradCrates(BasePlayer player, string command, string[] args)
+        {
+            if (permission.UserHasPermission(player.UserIDString, PermissionBlockCommand) || !permission.UserHasPermission(player.UserIDString, usePerm2))
+            {
+                player.ChatMessage("You do not have permission to use this command.");
+                return;
+            }
+
+            if (lastCommandUsage.TryGetValue(player.userID, out DateTime lastUse) && (DateTime.Now - lastUse).TotalSeconds < config.coolDown)
+            {
+                player.ChatMessage($"Please wait {(config.coolDown - (DateTime.Now - lastUse).TotalSeconds):F2} seconds before using this command again.");
+                return;
+            }
+
+            List<BaseEntity> crates = new List<BaseEntity>();
+            foreach (BaseEntity entity in BaseEntity.serverEntities)
+            {
+                if (entity is BaseEntity crate && (crate.prefabID == codelockPrefabID || crate.prefabID == bcratePrefabID))
+                {
+                    crates.Add(crate);
+                }
+            }
+
+            if (crates.Count == 0)
+            {
+                player.ChatMessage("No crates found within range.");
+                return;
+            }
+
+            int movedCount = 0;
+            float moveRadius = 40f; // Define the radius for moving crates from
+
+            foreach (BaseEntity crate in crates)
+            {
+                float distance = Vector3.Distance(crate.transform.position, player.eyes.position);
+
+                if (distance <= moveRadius)
+                {
+                    CheckOwnerAndMove(crate); // Move the crate to owner if it has 1, else crate stays put.
+                    movedCount++;
+                }
+            }
+
+            if (movedCount == 0)
+            {
+                player.ChatMessage("No crates are close enough to move.");
+            }
+            else
+            {
+                player.ChatMessage($"Moved {movedCount}  to your position.");
             }
 
             lastCommandUsage[player.userID] = DateTime.Now;
@@ -270,12 +345,16 @@ namespace Oxide.Plugins
         static Configuration config;
         public class Configuration
         {
-            [JsonProperty("Cooldown on /crates command (in seconds)")]
+            [JsonProperty("Cooldown on /hcrates and /bcrates command (in seconds)")]
             public int coolDown = 10;
             [JsonProperty("Teleport to player variance: Z Min")]
             public float zMin = -5;
             [JsonProperty("Teleport to player variance: Z Max")]
             public float zMax = 5;
+            [JsonProperty("Teleport to player variance: Y Max")]
+            public float yMax = 2;
+            [JsonProperty("Teleport to player variance: Y Min")]
+            public float yMin = 1;
             [JsonProperty("Teleport to player variance: X Min")]
             public float xMin = -5;
             [JsonProperty("Teleport to player variance: X MaX")]
