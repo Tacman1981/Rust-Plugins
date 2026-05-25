@@ -1,6 +1,5 @@
-using Oxide.Core;
-using Oxide.Core.Plugins;
-using System.Collections.Generic;
+using System;
+using System.Linq;
 using UnityEngine;
 
 namespace Oxide.Plugins
@@ -27,7 +26,9 @@ namespace Oxide.Plugins
             if (player == null || player.IsAdmin)
             {
                 {
-                    var args = arg.Args ?? Array.Empty<string>();
+                    var args = arg.Args != null
+                        ? arg.Args.Select(x => x.ToString()).ToArray()
+                        : Array.Empty<string>();
 
                     if (args.Length < 2)
                     {
@@ -98,7 +99,9 @@ namespace Oxide.Plugins
             }
             if (player == null || player.IsAdmin)
             {
-                var args = arg.Args ?? Array.Empty<string>();
+                var args = arg.Args != null
+                ? arg.Args.Select(x => x.ToString()).ToArray()
+                : Array.Empty<string>();
 
                 if (args.Length < 2)
                 {
