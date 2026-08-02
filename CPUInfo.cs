@@ -11,7 +11,7 @@ namespace Oxide.Plugins
         private void CmdCpuInfo(IPlayer player, string command, string[] args)
         {
             player.Message($"CPU: {SystemInfo.processorType}");
-            player.Message($"Cores: {SystemInfo.processorCount}");
+            player.Message($"Processor Threads: {SystemInfo.processorCount}");
             player.Message($"Clock Speed: {SystemInfo.processorFrequency} MHz");
             player.Message($"RAM: {SystemInfo.systemMemorySize / 1024f:F2} GB");
         }
