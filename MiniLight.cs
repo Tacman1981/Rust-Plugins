@@ -86,8 +86,8 @@ namespace Oxide.Plugins
             SetupSearchLight(searchLight);
             searchLight.Spawn();
             SetupInvincibility(searchLight);
-            searchLight.SetFlag(BaseEntity.Flags.Reserved5, true);
-            searchLight.SetFlag(BaseEntity.Flags.Busy, true);
+            searchLight.SetFlagLocal(BaseEntity.Flags.Reserved5, true);
+            searchLight.SetFlagLocal(BaseEntity.Flags.Busy, true);
             searchLight.SetParent(sphereEntity);
             searchLight.transform.localPosition = Vector3.zero;
             searchLight.transform.localRotation = Quaternion.Euler(-20, 180, 180);
