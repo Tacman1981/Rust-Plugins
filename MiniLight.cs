@@ -1,8 +1,3 @@
-//Some changes to facepunch code has broken this 1. when it does work it has a delay when switching states.
-//Still trying to figure out why it desnt continue to work after restarts. we likely must kill the minicopter on initialize to ensure continuous functionality.
-//This is specifically designed for pve servers with personal minicopters.
-
-//Special thanks to MinicopterOptions developer for this method, I literally just used the code from that plugin to attach the light, and the method used to toggle the light on and off. now we have night lights on minicopters, and can use jet engine from skill tree with no interference.
 using System.Collections.Generic;
 using UnityEngine;
 using Oxide.Core.Plugins;
@@ -23,12 +18,6 @@ namespace Oxide.Plugins
         #endregion
 
         #region Oxide Hooks
-        private void Init()
-        {
-            Subscribe(nameof(OnEntitySpawned));
-            Subscribe(nameof(OnServerCommand));
-        }
-
         private void OnServerInitialized()
         {
             // Get all Minicopters in the server
@@ -36,7 +25,7 @@ namespace Oxide.Plugins
             {
                 if (entity is Minicopter copter)
                 {
-                    OnEntitySpawned(copter);
+                    timer.Once(1f, () => AddSearchLight(copter));
                 }
             }
         }
@@ -51,7 +40,7 @@ namespace Oxide.Plugins
 
         private void Unload()
         {
-            // Perform any necessary cleanup
+            
         }
         #endregion
 
@@ -82,12 +71,13 @@ namespace Oxide.Plugins
             var searchLight = GameManager.server.CreateEntity(searchLightPrefab, sphereEntity.transform.position) as SearchLight;
             if (searchLight == null)
                 return;
-
+            
             SetupSearchLight(searchLight);
             searchLight.Spawn();
             SetupInvincibility(searchLight);
-            searchLight.SetFlagLocal(BaseEntity.Flags.Reserved5, true);
-            searchLight.SetFlagLocal(BaseEntity.Flags.Busy, true);
+            using var flagsScope = searchLight.StartSetFlags(BaseEntity.FlagsUpdateMode.SendNetworkUpdate_Flags);
+            flagsScope.Set(BaseEntity.Flags.Reserved5, true);
+            flagsScope.Set(BaseEntity.Flags.Busy, true);
             searchLight.SetParent(sphereEntity);
             searchLight.transform.localPosition = Vector3.zero;
             searchLight.transform.localRotation = Quaternion.Euler(-20, 180, 180);
@@ -157,7 +147,8 @@ namespace Oxide.Plugins
                     if (light == null)
                         continue;
 
-                    light.SetFlag(IOEntity.Flag_HasPower, !light.IsPowered());
+                using var flagsScope = light.StartSetFlags(BaseEntity.FlagsUpdateMode.SendNetworkUpdate_Flags);
+                flagsScope.Set(IOEntity.Flag_HasPower, !light.IsPowered());
 
                     // Prevent other lights from toggling.
                     return false;
@@ -169,4 +160,3 @@ namespace Oxide.Plugins
         #endregion
     }
 }
-
