@@ -15,6 +15,8 @@ using System.ComponentModel;
 using Newtonsoft.Json;
 using System;
 
+//THIS PLUGIN NO LONGER FUNCTIONS DUE TO THE BOOLEAN VALUE USED BEING UNUSED IN THE GAME CODE NOW. IT SHOULD FUNCTION JUST FINE IF THEY EVER DECIDE TO RE-ADD THE BOOLEAN AS PART OF THE LOGIC
+
 namespace Oxide.Plugins
 {
     [Info("Compost Stacks", "Tacman", "2.1.1")]
