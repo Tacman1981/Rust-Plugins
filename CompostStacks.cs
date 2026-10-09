@@ -10,7 +10,7 @@ using System;
 namespace Oxide.Plugins
 {
     [Info("Compost Stacks", "Tacman", "2.1.3")]
-    [Description("Toggle the CompostEntireStack boolean on load and for new Composter entities, which will compost entire stacks of all compostable items.")]
+    [Description("Composts entire stacks of compostable items inside the composters. It no longer uses the boolean value")]
     public class CompostStacks : RustPlugin
     {
         private const string permissionName = "compoststacks.use";
