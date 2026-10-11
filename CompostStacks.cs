@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Oxide.Plugins;
 using Oxide.Core.Libraries.Covalence;
@@ -9,27 +8,49 @@ using System;
 
 namespace Oxide.Plugins
 {
-    [Info("Compost Stacks", "Tacman", "2.1.3")]
-    [Description("Composts entire stacks of compostable items inside the composters. It no longer uses the boolean value")]
+    [Info("Compost Stacks", "Tacman", "3.0.0")]
+    [Description("Toggle the CompostEntireStack boolean on load and for new Composter entities, which will compost entire stacks of all compostable items.")]
     public class CompostStacks : RustPlugin
     {
         private const string permissionName = "compoststacks.use";
+        private ItemDefinition defaultFertilizerDef;
+        private readonly Dictionary<int, float> compostableCache = new Dictionary<int, float>();
 
         private void Init()
         {
             permission.RegisterPermission(permissionName, this);
         }
 
+        private void OnServerInitialized()
+        {
+            defaultFertilizerDef = ItemManager.FindItemDefinition("fertilizer");
+            foreach (ItemDefinition def in ItemManager.itemList)
+            {
+                if (def == null) continue;
+                ItemModCompostable compostable = def.GetComponent<ItemModCompostable>();
+                if (compostable != null && compostable.TotalFertilizerProduced > 0f)
+                {
+                    compostableCache[def.itemid] = compostable.TotalFertilizerProduced;
+                }
+            }
+        }
+
         private object OnOvenCook(Composter c, Item i)
         {
             if (c == null || c.IsDestroyed || c.inventory == null) return null;
-            if (!permission.UserHasPermission(c.OwnerID.ToString(), permissionName)) return null;
+
+            List<Item> items = c.inventory.itemList;
+            int count = items.Count;
+            if (count == 0) return null;
+
+            int minSlot = c._inputSlotIndex;
+            int maxSlot = minSlot + c.inputSlots;
 
             int cookingCount = 0;
-            for (int index = 0; index < c.inventory.itemList.Count; index++)
+            for (int idx = 0; idx < count; idx++)
             {
-                Item item = c.inventory.itemList[index];
-                if (item != null && item.position >= c._inputSlotIndex && item.position < c._inputSlotIndex + c.inputSlots)
+                Item item = items[idx];
+                if (item != null && item.position >= minSlot && item.position < maxSlot)
                 {
                     cookingCount++;
                 }
@@ -38,41 +59,46 @@ namespace Oxide.Plugins
             if (cookingCount == 0) return null;
 
             float delta = 0.5f * (float)c.smeltSpeed / (float)cookingCount;
-            ItemDefinition fertilizerDef = c.FertilizerDef != null ? c.FertilizerDef : ItemManager.FindItemDefinition("fertilizer");
+            ItemDefinition fertilizerDef = c.FertilizerDef != null ? c.FertilizerDef : defaultFertilizerDef;
             if (fertilizerDef == null) return null;
 
-            List<Item> readyItems = Facepunch.Pool.Get<List<Item>>();
-            for (int index = 0; index < c.inventory.itemList.Count; index++)
-            {
-                Item item = c.inventory.itemList[index];
-                if (item == null || item.info == null) continue;
-                if (item.position < c._inputSlotIndex || item.position >= c._inputSlotIndex + c.inputSlots) continue;
+            List<Item> readyItems = null;
 
-                ItemModCompostable compostable = item.info.GetComponent<ItemModCompostable>();
-                if (compostable == null || compostable.TotalFertilizerProduced <= 0f) continue;
+            for (int idx = 0; idx < count; idx++)
+            {
+                Item item = items[idx];
+                if (item == null || item.info == null) continue;
+                if (item.position < minSlot || item.position >= maxSlot) continue;
+                if (!compostableCache.ContainsKey(item.info.itemid)) continue;
 
                 if (item.cookTimeLeft - delta <= 0f)
                 {
+                    if (readyItems == null)
+                    {
+                        readyItems = Facepunch.Pool.Get<List<Item>>();
+                    }
                     readyItems.Add(item);
                 }
             }
 
-            if (readyItems.Count == 0)
+            if (readyItems == null) return null;
+
+            if (!permission.UserHasPermission(c.OwnerID.ToString(), permissionName))
             {
                 Facepunch.Pool.FreeUnmanaged(ref readyItems);
                 return null;
             }
 
-            for (int index = 0; index < readyItems.Count; index++)
+            for (int idx = 0; idx < readyItems.Count; idx++)
             {
-                Item item = readyItems[index];
-                ItemModCompostable compostable = item.info.GetComponent<ItemModCompostable>();
-                if (compostable == null) continue;
+                Item item = readyItems[idx];
+                float fertilizerProducedPerItem;
+                if (!compostableCache.TryGetValue(item.info.itemid, out fertilizerProducedPerItem)) continue;
 
                 int amount = item.amount;
                 if (amount <= 0) continue;
 
-                float totalFertilizerProduced = amount * compostable.TotalFertilizerProduced;
+                float totalFertilizerProduced = amount * fertilizerProducedPerItem;
                 item.Remove();
 
                 int fertilizerCount = Mathf.FloorToInt(totalFertilizerProduced);
